@@ -1,0 +1,51 @@
+
+# Виртуальное окружение Python
+.venv/
+venv/
+
+# Кеш Python и тестов
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Служебные файлы IDE и операционной системы
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Переменные окружения и секреты
+.env
+.env.*
+!.env.example
+
+# Логи
+*.log
+logs/
+
+# Загруженные видео и другие большие медиафайлы
+media/
+uploads/
+videos/
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm
+
+# Собранные и временные файлы
+dist/
+build/
+*.egg-info/
+tmp/
+temp/
+
+# Внутренние данные Git
+.git/
+
+# Вспомогательные файлы
+help.md
