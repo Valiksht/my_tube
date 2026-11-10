@@ -14,3 +14,32 @@ htmlcov/
 dist/
 build/
 help.md
+
+# Docker compose файлы
+docker-compose.yml
+docker-compose*.yml
+
+# Логи
+logs/
+
+# Alembic
+alembic/
+
+# Медиа файлы (опционально)
+media/uploads/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.env
+.idea/
+.vscode/
+*.egg-info/
+dist/
+build/
+help.md
