@@ -1,12 +1,11 @@
-"""Дependencies для FastAPI."""
-
-from sqlalchemy import select
-from app.database import get_db
+"""Dependencies for FastAPI."""
 
 
 async def get_db():
-    """Dependency для получения async session (будет реализовано на Этапе 2)."""
-    pass
+    """Dependency для получения async session."""
+    from app.database.session import get_async_session
+    db = get_async_session()
+    return db
 
 
 async def get_current_user():

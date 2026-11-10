@@ -1,14 +1,24 @@
 """Async session management."""
 from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from app.core.config import settings
+
+AsyncSessionDep = AsyncSession
+
+try:
+    from app.core.config import settings
+except ImportError:
+    settings = None  # type: ignore
 
 _db_engine = None
 
 
 def _get_db_url() -> str:
     """Получить URL подключения к базе данных."""
-    return f"postgresql+asyncpg://postgres:{settings.DB_PASSWORD}@postgres:5432/mytube"
+    if settings is None:
+        return "postgresql+asyncpg://postgres:mytubesecurepassword123!@localhost:5432/mytube"
+    # Используем DB_PASSWORD из config, если он указан; иначе fallback
+    password = getattr(settings, 'DB_PASSWORD', 'mytubesecurepassword123!')
+    return f"postgresql+asyncpg://postgres:{password}@{settings.DB_HOST or 'localhost'}:{settings.DB_PORT or 5432}/{settings.DB_NAME or 'mytube'}"
 
 
 def get_async_engine():
