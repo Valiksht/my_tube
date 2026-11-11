@@ -3,10 +3,12 @@ __all__ = ["Channel"]
 
 from datetime import datetime, timezone
 from sqlalchemy import String, Integer, DateTime, ForeignKey, Text, text
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, DeclarativeBase
+from sqlalchemy.ext.asyncio import AsyncAttrs
+from app.models.base import Base
 
 
-class Channel:
+class Channel(Base):
     """Видео-канал пользователя YouTube Clone.
 
     Каждый пользователь может иметь только один канал (One-to-One связь с User).

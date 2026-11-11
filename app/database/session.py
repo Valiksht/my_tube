@@ -1,7 +1,10 @@
 """Менеджер асинхронных сессий PostgreSQL."""
 
-import os
 from contextlib import asynccontextmanager
+
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+
+from app.core.config import get_settings
 
 
 @asynccontextmanager
@@ -22,19 +25,14 @@ async def get_async_session():
     
     Автоматически обрабатывает commit и rollback.
     """
-    from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-    from sqlalchemy.pool import StaticPool
-    
-    database_url = os.getenv("DATABASE_URL")
-    if not database_url:
-        raise RuntimeError("DATABASE_URL не настроено!")
+    settings = get_settings()
     
     engine = create_async_engine(
-        database_url,
-        echo=False,
+        settings.database_url,
+        echo=settings.debug,
         pool_size=5,
         max_overflow=10,
-        pool_pre_ping=True
+        pool_pre_ping=True,
     )
     
     async with engine() as session:

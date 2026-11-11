@@ -1,59 +1,58 @@
 """Конфигурация подключения к базе данных PostgreSQL."""
 
 import asyncio
-import asyncpg  # Импорт перед SQLAlchemy чтобы использовать asyncpg
 import os
 from functools import lru_cache
 
+from sqlalchemy.ext.asyncio import create_async_engine
+
+from app.core.config import get_settings
+
 
 @lru_cache()
-def check_connection():
+def check_connection() -> bool:
     """Проверить подключение к базе данных.
     
-    Возвращает True если подключение успешно, иначе False.
+    Returns:
+        True если подключение успешно, иначе False.
     """
-    from sqlalchemy.ext.asyncio import create_async_engine
+    settings = get_settings()
+    database_url = settings.database_url
     
-    database_url = os.getenv("DATABASE_URL")
-    if not database_url:
-        raise RuntimeError("DATABASE_URL не настроено!")
-    
-    async def _test():
+    async def _test() -> bool:
         engine = create_async_engine(
             database_url,
             echo=False,
             pool_size=1,
             max_overflow=0,
-            pool_pre_ping=True
+            pool_pre_ping=True,
         )
         
         try:
-            conn = await engine.connect()
-            await conn.execute("SELECT 1")
-            await conn.close()  # Возвращаем соединение в пул
+            async with engine.connect() as conn:
+                await conn.execute("SELECT 1")
             return True
         except Exception:
             return False
     
-    loop = asyncio.get_event_loop()
-    return bool(loop.run_until_complete(_test()))
+    return bool(asyncio.run(_test()))
 
 
 def get_async_engine():
-    """Получить асинхронный движок PostgreSQL."""
-    from sqlalchemy.ext.asyncio import create_async_engine
+    """Получить асинхронный движок PostgreSQL.
     
-    database_url = os.getenv("DATABASE_URL")
-    if not database_url:
-        raise RuntimeError("DATABASE_URL не настроено!")
+    Returns:
+        AsyncEngine: Движок SQLAlchemy для работы с БД.
+    """
+    settings = get_settings()
     
     return create_async_engine(
-        database_url,
-        echo=False,
+        settings.database_url,
+        echo=settings.debug,
         pool_size=5,
         max_overflow=10,
         pool_pre_ping=True,
-        driver="asyncpg"
+        driver="asyncpg",
     )
 
 

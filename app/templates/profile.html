@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}{{ user.username }} - YouTube Clone{% endblock %}
+
+{% block content %}
+<div class="profile-page">
+    <div class="profile-header">
+        <div class="profile-avatar">👤</div>
+        <div class="profile-info">
+            <h1>{{ user.username }}</h1>
+            <p class="profile-email">{{ user.email }}</p>
+            <p class="profile-joined">На YouTube с {{ user.created_at.strftime('%B %Y') }}</p>
+            <p class="profile-subscribers">{{ subscriber_count }} подписчиков</p>
+        </div>
+    </div>
+    
+    {% if user.channel %}
+    <div class="channel-section">
+        <h2>Канал: {{ user.channel.name }}</h2>
+        {% if user.channel.description %}
+        <p>{{ user.channel.description }}</p>
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    <div class="videos-section">
+        <h2>Видео пользователя</h2>
+        
+        {% if videos %}
+        <div class="video-grid">
+            {% for video in videos %}
+            <div class="video-card">
+                <a href="/video/{{ video.id }}" class="video-card-link">
+                    {% if video.thumbnail_url %}
+                    <img src="{{ video.thumbnail_url }}" alt="{{ video.title }}" class="video-thumbnail">
+                    {% else %}
+                    <div class="video-thumbnail placeholder">🎥</div>
+                    {% endif %}
+                    <div class="video-card-info">
+                        <h3 class="video-card-title">{{ video.title }}</h3>
+                        <p class="video-card-meta">
+                            {{ video.view_count }} просмотров · {{ video.created_at.strftime('%d.%m.%Y') }}
+                        </p>
+                    </div>
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <p>У этого пользователя пока нет видео.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}Регистрация - YouTube Clone{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+    <div class="auth-card">
+        <h1>Регистрация</h1>
+        
+        {% if error %}
+        <div class="alert alert-error">{{ error }}</div>
+        {% endif %}
+        
+        <form action="/register" method="POST" class="auth-form">
+            <div class="form-group">
+                <label for="username">Логин</label>
+                <input type="text" id="username" name="username" required 
+                       placeholder="Минимум 3 символа" minlength="3" maxlength="50" autofocus>
+            </div>
+            
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" required 
+                       placeholder="example@mail.com">
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Пароль</label>
+                <input type="password" id="password" name="password" required 
+                       placeholder="Минимум 8 символов" minlength="8" maxlength="128">
+            </div>
+            
+            <div class="form-group">
+                <label for="password_confirm">Подтверждение пароля</label>
+                <input type="password" id="password_confirm" name="password_confirm" required 
+                       placeholder="Повторите пароль">
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-full">Зарегистрироваться</button>
+        </form>
+        
+        <p class="auth-footer">
+            Уже есть аккаунт? <a href="/login">Войти</a>
+        </p>
+    </div>
+</div>
+{% endblock %}

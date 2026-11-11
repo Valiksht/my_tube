@@ -15,15 +15,12 @@ dist/
 build/
 help.md
 
-# Docker compose файлы
+# Docker compose файлы (локальные, не используемые)
 docker-compose.yml
 docker-compose*.yml
 
 # Логи
 logs/
-
-# Alembic
-alembic/
 
 # Медиа файлы (опционально)
 media/uploads/

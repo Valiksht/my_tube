@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Главная - YouTube Clone{% endblock %}
+
+{% block content %}
+<div class="home">
+    <h1>Популярные видео</h1>
+    
+    {% if videos %}
+        <div class="video-grid">
+            {% for video in videos %}
+            <div class="video-card">
+                <a href="/video/{{ video.id }}" class="video-card-link">
+                    {% if video.thumbnail_url %}
+                    <img src="{{ video.thumbnail_url }}" alt="{{ video.title }}" class="video-thumbnail">
+                    {% else %}
+                    <div class="video-thumbnail placeholder">🎥</div>
+                    {% endif %}
+                    <div class="video-card-info">
+                        <h3 class="video-card-title">{{ video.title }}</h3>
+                        <p class="video-card-meta">
+                            {{ video.view_count }} просмотров · {{ video.created_at.strftime('%d.%m.%Y') }}
+                        </p>
+                    </div>
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <p>Пока нет видео. Загрузите первое! 🎬</p>
+            {% if current_user %}
+            <a href="/upload" class="btn btn-primary">Загрузить видео</a>
+            {% else %}
+            <a href="/register" class="btn btn-primary">Зарегистрироваться</a>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

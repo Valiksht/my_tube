@@ -3,10 +3,12 @@ __all__ = ["Comment"]
 
 from datetime import datetime, timezone
 from sqlalchemy import String, Integer, ForeignKey, DateTime, text
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, DeclarativeBase
+from sqlalchemy.ext.asyncio import AsyncAttrs
+from app.models.base import Base
 
 
-class Comment:
+class Comment(Base):
     """Комментарий под видео.
 
     Основные атрибуты:

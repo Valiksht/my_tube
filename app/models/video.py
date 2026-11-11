@@ -2,15 +2,17 @@ __all__ = ["Video", "VideoPrivacy"]
 """Модель видео."""
 
 from datetime import datetime, timezone
-from sqlalchemy import String, Integer, DateTime, ForeignKey, Text, text
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import Boolean, String, Integer, DateTime, ForeignKey, Text, text
+from sqlalchemy.orm import Mapped, mapped_column, relationship, DeclarativeBase
+from sqlalchemy.ext.asyncio import AsyncAttrs
+from app.models.base import Base
 from app.models.channel import Channel
 from app.models.like import Like
 from app.models.comment import Comment
 from app.models.enum import VideoPrivacy
 
 
-class Video:
+class Video(Base):
     """Видео загруженное на канал YouTube Clone.
 
     Основные атрибуты:
@@ -49,7 +51,17 @@ class Video:
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str] = mapped_column(Text, default="")
     video_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    video_object_name: Mapped[str | None] = mapped_column(
+        String(500),
+        nullable=True,
+        comment="Имя объекта в хранилище (MinIO/S3)",
+    )
     thumbnail_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    thumbnail_object_name: Mapped[str | None] = mapped_column(
+        String(500),
+        nullable=True,
+        comment="Имя объекта превью в хранилище",
+    )
     duration: Mapped[int] = mapped_column(Integer, default=0)
     view_count: Mapped[int] = mapped_column(Integer, default=0)
     privacy: Mapped[str] = mapped_column(

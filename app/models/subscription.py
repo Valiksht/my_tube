@@ -2,11 +2,13 @@ __all__ = ["Subscription"]
 """Модель подписок."""
 
 from datetime import datetime, timezone
-from sqlalchemy import Boolean, Integer, ForeignKey, DateTime, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import Boolean, Integer, ForeignKey, DateTime, text, UniqueConstraint
+from sqlalchemy.orm import Mapped, mapped_column, relationship, DeclarativeBase
+from sqlalchemy.ext.asyncio import AsyncAttrs
+from app.models.base import Base
 
 
-class Subscription:
+class Subscription(Base):
     """Подписка пользователя на канал.
 
     Подписка связывает пользователя с каналом который тот следует.

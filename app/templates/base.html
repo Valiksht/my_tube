@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}YouTube Clone{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <a href="/" class="logo">🎬 YouTube Clone</a>
+                <nav class="nav">
+                    {% if current_user %}
+                        <a href="/upload" class="nav-link">Загрузить</a>
+                        <a href="/profile/{{ current_user.id }}" class="nav-link">Профиль</a>
+                        <span class="user-info">{{ current_user.username }}</span>
+                        <form action="/api/auth/logout" method="POST" class="logout-form">
+                            <button type="submit" class="btn-logout">Выйти</button>
+                        </form>
+                    {% else %}
+                        <a href="/login" class="nav-link">Войти</a>
+                        <a href="/register" class="nav-link">Регистрация</a>
+                    {% endif %}
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="container">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 YouTube Clone. Учебный проект.</p>
+        </div>
+    </footer>
+
+    <script src="/static/js/app.js"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -3,11 +3,13 @@ __all__ = ["User"]
 
 from datetime import datetime, timezone
 from sqlalchemy import String, Integer, DateTime, Boolean, ForeignKey, text
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, DeclarativeBase
+from sqlalchemy.ext.asyncio import AsyncAttrs
+from app.models.base import Base
 from app.models.enum import UserRole
 
 
-class User:
+class User(Base):
     """Пользователь системы YouTube Clone.
 
     Основные атрибуты:
@@ -80,6 +82,12 @@ class User:
         "Subscription",
         back_populates="subscribed_user",
         lazy="selectin"
+    )
+    sessions: Mapped[list["UserSession"]] = relationship(
+        "UserSession",
+        back_populates="user",
+        lazy="selectin",
+        foreign_keys="UserSession.user_id",
     )
 
 

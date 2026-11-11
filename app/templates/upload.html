@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Загрузка видео - YouTube Clone{% endblock %}
+
+{% block content %}
+<div class="upload-page">
+    <h1>Загрузка видео</h1>
+    
+    {% if error %}
+    <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+    
+    <form action="/upload" method="POST" enctype="multipart/form-data" class="upload-form">
+        <div class="form-group">
+            <label for="title">Название видео *</label>
+            <input type="text" id="title" name="title" required 
+                   placeholder="Введите название видео" maxlength="200" autofocus>
+        </div>
+        
+        <div class="form-group">
+            <label for="description">Описание</label>
+            <textarea id="description" name="description" rows="4" 
+                      placeholder="Расскажите о вашем видео" maxlength="10000"></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label for="privacy">Приватность</label>
+            <select id="privacy" name="privacy">
+                <option value="public">Публичное (видит каждый)</option>
+                <option value="unlisted">Не в списке (по ссылке)</option>
+                <option value="private">Приватное (только вы)</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="video_file">Файл видео *</label>
+            <input type="file" id="video_file" name="video_file" required 
+                   accept="video/*">
+            <small>MP4, WebM, OGG. Максимум 2GB.</small>
+        </div>
+        
+        <div class="form-group">
+            <label for="thumbnail_file">Превью (опционально)</label>
+            <input type="file" id="thumbnail_file" name="thumbnail_file" 
+                   accept="image/jpeg, image/png, image/webp">
+            <small>JPG, PNG или WebP</small>
+        </div>
+        
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Загрузить</button>
+            <a href="/" class="btn btn-secondary">Отмена</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
