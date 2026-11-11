@@ -1,12 +1,15 @@
+__all__ = ["Subscription"]
 """Модель подписок."""
 
 from datetime import datetime, timezone
-from sqlalchemy import String, Integer, ForeignKey, DateTime
+from sqlalchemy import Boolean, Integer, ForeignKey, DateTime, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
 class Subscription:
     """Подписка пользователя на канал.
+
+    Подписка связывает пользователя с каналом который тот следует.
 
     Основные атрибуты:
     - subscribed_user_id: пользователь, который подписался
@@ -16,6 +19,10 @@ class Subscription:
 
     Таблица связывает пользователей и каналы (many-to-many).
     Пользователь может подписываться на много каналов.
+
+    Ограничения:
+    - UniqueConstraint(subscribed_user_id, subscribed_channel_id) — предотвращает дублирование подписки
+      Один пользователь может подписаться только один раз на один канал.
     """
 
     __tablename__ = "subscriptions"
@@ -46,12 +53,11 @@ class Subscription:
         "Channel", back_populates="subscribers"
     )
 
-    def __init__(
-        self,
-        subscribed_user_id: int,
-        subscribed_channel_id: int,
-        notification_enabled: bool = True
-    ):
-        self.subscribed_user_id = subscribed_user_id
-        self.subscribed_channel_id = subscribed_channel_id
-        self.notification_enabled = notification_enabled
+    # Уникальное ограничение — один пользователь может подписаться только на один канал
+    __table_args__ = (
+        UniqueConstraint("subscribed_user_id", "subscribed_channel_id", name="uq_user_channel_subscription"),
+    )
+
+
+__all__ = ["Subscription"]
+"""Модель подписок."""

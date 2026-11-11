@@ -1,7 +1,8 @@
+__all__ = ["Comment"]
 """Модель комментариев."""
 
 from datetime import datetime, timezone
-from sqlalchemy import String, Integer, ForeignKey, DateTime
+from sqlalchemy import String, Integer, ForeignKey, DateTime, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
@@ -14,7 +15,9 @@ class Comment:
     - content: текст комментария
     - created_at: когда написал комментарий
 
-    Каждый пользователь может оставить много комментариев на разных видео.
+    Связи с другими таблицами:
+    - video → Видео которому написан комментарий
+    - user  → Пользователь написавший комментарий
     """
 
     __tablename__ = "comments"
@@ -45,12 +48,6 @@ class Comment:
         "User", back_populates="comments"
     )
 
-    def __init__(
-        self,
-        video_id: int,
-        user_id: int,
-        content: str
-    ):
-        self.video_id = video_id
-        self.user_id = user_id
-        self.content = content
+
+__all__ = ["Comment"]
+"""Модель комментариев."""

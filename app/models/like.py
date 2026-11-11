@@ -1,7 +1,8 @@
+__all__ = ["Like"]
 """Модель лайков."""
 
 from datetime import datetime, timezone
-from sqlalchemy import Integer, ForeignKey, DateTime
+from sqlalchemy import Integer, ForeignKey, DateTime, text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
@@ -13,8 +14,13 @@ class Like:
     - user_id: кто поставил лайк
     - created_at: когда поставили лайк
 
-    Это связующая таблица между User и Video (many-to-many).
-    Каждый пользователь может поставить лайк только один раз на одно видео.
+    Связи с другими таблицами:
+    - video → Видео которому поставлен лайк
+    - user → Пользователь поставивший лайк
+
+    Особенности реализации:
+    - UniqueConstraint на (user_id, video_id) гарантирует что пользователь может ставить
+      лайк только один раз на одно видео
     """
 
     __tablename__ = "likes"
@@ -44,6 +50,10 @@ class Like:
         "User", back_populates="likes"
     )
 
-    def __init__(self, video_id: int, user_id: int):
-        self.video_id = video_id
-        self.user_id = user_id
+    __table_args__ = (
+        UniqueConstraint("user_id", "video_id", name="uq_user_video_likes"),
+    )
+
+
+__all__ = ["Like"]
+"""Модель лайков."""
