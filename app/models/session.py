@@ -7,7 +7,7 @@
 from datetime import datetime, timezone
 from typing import Optional
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -58,10 +58,10 @@ class UserSession(Base):
         comment="Время истечения сессии",
     )
     is_active: Mapped[bool] = mapped_column(
-        String(1),
-        default="1",
+        Boolean,
+        default=True,
         nullable=False,
-        comment="Флаг активности (1=active, 0=revoked)",
+        comment="Флаг активности (True=active, False=revoked)",
     )
     ip_address: Mapped[Optional[str]] = mapped_column(
         String(45),

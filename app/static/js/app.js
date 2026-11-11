@@ -1,67 +1,200 @@
 // YouTube Clone - JavaScript
 
 document.addEventListener('DOMContentLoaded', function() {
-    // CSRF токен для AJAX запросов
-    const csrfToken = getCSRFToken();
-    
-    // Обработка форм с AJAX
     initFormHandlers();
-    
-    // Обработка уведомлений
-    showNotifications();
+    initSearchAutofocus();
 });
 
-// Получить CSRF токен из Cookie
+// Получить CSRF токен из meta-тега
 function getCSRFToken() {
-    const cookies = document.cookie.split(';');
-    for (let cookie of cookies) {
-        const [name, value] = cookie.trim().split('=');
-        if (name.includes('_csrf')) {
-            return decodeURIComponent(value);
-        }
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    if (meta) {
+        return meta.getAttribute('content') || '';
     }
     return '';
 }
 
+// Получить CSRF токен из hidden input
+function getCSRFTokenFromForm() {
+    const input = document.querySelector('input[name="csrf_token"]');
+    if (input) {
+        return input.value || '';
+    }
+    return getCSRFToken();
+}
+
+// Добавить CSRF-токен ко всем формам
+function addCSRFToForms() {
+    document.querySelectorAll('form[method="POST"], form[method="post"]').forEach(function(form) {
+        if (form.querySelector('input[name="csrf_token"]')) {
+            return;
+        }
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'csrf_token';
+        input.value = getCSRFToken();
+        form.insertBefore(input, form.firstChild);
+    });
+}
+
 // Инициализация обработчиков форм
 function initFormHandlers() {
+    addCSRFToForms();
+    
     // Logout формы
-    document.querySelectorAll('.logout-form').forEach(form => {
-        form.addEventListener('submit', async function(e) {
+    document.querySelectorAll('.logout-form').forEach(function(form) {
+        form.addEventListener('submit', function(e) {
             e.preventDefault();
-            try {
-                const response = await fetch('/api/auth/logout', {
+            var action = form.getAttribute('action');
+            fetch(action, {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'X-CSRF-Token': getCSRFToken()
+                }
+            })
+            .then(function(response) {
+                if (response.ok || response.status === 302) {
+                    window.location.href = '/';
+                }
+            })
+            .catch(function(error) {
+                console.error('Logout error:', error);
+            });
+        });
+    });
+    
+    // Like кнопки
+    document.querySelectorAll('.like-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var videoId = this.dataset.videoId;
+            var countEl = this.querySelector('.like-count');
+            
+            fetch('/api/videos/' + videoId + '/likes', {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'X-CSRF-Token': getCSRFToken()
+                }
+            })
+            .then(function(response) {
+                if (response.ok) {
+                    return fetch('/api/videos/' + videoId + '/likes/count');
+                }
+                throw new Error('Like failed');
+            })
+            .then(function(response) {
+                return response.json();
+            })
+            .then(function(data) {
+                if (countEl) {
+                    countEl.textContent = formatNumber(data.like_count);
+                }
+            })
+            .catch(function(error) {
+                console.error('Error:', error);
+                showAlert('Не удалось обработать лайк', 'error');
+            });
+        });
+    });
+    
+    // Subscribe кнопки
+    document.querySelectorAll('.subscribe-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var channelId = this.dataset.channelId;
+            
+            fetch('/api/channels/' + channelId + '/subscriptions', {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'X-CSRF-Token': getCSRFToken()
+                }
+            })
+            .then(function(response) {
+                if (response.ok) {
+                    var text = btn.textContent.trim();
+                    btn.textContent = text === 'Подписаться' ? 'Отписаться' : 'Подписаться';
+                    
+                    var countEl = document.querySelector('.channel-subscribers');
+                    if (countEl) {
+                        return fetch('/api/channels/' + channelId + '/subscriptions/count')
+                            .then(function(r) { return r.json(); })
+                            .then(function(data) {
+                                countEl.textContent = data.subscriber_count + ' подписчиков';
+                            });
+                    }
+                }
+                throw new Error('Subscribe failed');
+            })
+            .catch(function(error) {
+                console.error('Error:', error);
+                showAlert('Не удалось обновить подписку', 'error');
+            });
+        });
+    });
+    
+    // Report кнопки
+    document.querySelectorAll('.report-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var targetId = this.dataset.targetId;
+            var targetType = this.dataset.targetType;
+            var reason = prompt('Причина жалобы:');
+            if (reason && reason.length > 10) {
+                fetch('/api/moderation/reports', {
                     method: 'POST',
                     credentials: 'include',
                     headers: {
+                        'Content-Type': 'application/json',
                         'X-CSRF-Token': getCSRFToken()
+                    },
+                    body: JSON.stringify({
+                        target_type: targetType,
+                        target_id: parseInt(targetId),
+                        reason: reason
+                    })
+                })
+                .then(function(response) {
+                    if (response.ok) {
+                        showAlert('Жалоба отправлена', 'success');
+                    } else {
+                        throw new Error('Report failed');
                     }
+                })
+                .catch(function(error) {
+                    console.error('Error:', error);
+                    showAlert('Не удалось отправить жалобу', 'error');
                 });
-                if (response.ok) {
-                    window.location.href = '/';
-                }
-            } catch (error) {
-                console.error('Logout error:', error);
+            } else if (reason) {
+                showAlert('Причина должна содержать минимум 10 символов', 'error');
             }
         });
     });
 }
 
-// Показать уведомления
-function showNotifications() {
-    // Можно добавить систему уведомлений здесь
+// Фокус на поле поиска
+function initSearchAutofocus() {
+    var searchInput = document.querySelector('.search-form input[name="q"]');
+    if (searchInput && !searchInput.value) {
+        searchInput.focus();
+    }
 }
 
 // Показать алерт
-function showAlert(message, type = 'error') {
-    const alert = document.createElement('div');
-    alert.className = `alert alert-${type}`;
+function showAlert(message, type) {
+    type = type || 'error';
+    var alert = document.createElement('div');
+    alert.className = 'alert alert-' + type;
     alert.textContent = message;
     
-    const container = document.querySelector('.auth-card') || document.querySelector('.main');
+    var container = document.querySelector('.container');
     if (container) {
-        container.insertBefore(alert, container.firstChild);
-        setTimeout(() => alert.remove(), 5000);
+        var firstAlert = container.querySelector('.alert');
+        if (firstAlert && firstAlert !== alert) {
+            container.insertBefore(alert, firstAlert.nextSibling);
+        } else {
+            container.insertBefore(alert, container.firstChild);
+        }
+        setTimeout(function() { alert.remove(); }, 5000);
     }
 }
 

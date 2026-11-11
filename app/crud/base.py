@@ -45,6 +45,31 @@ class BaseRepository(Generic[ModelType]):
         result = await db.execute(query)
         return result.scalar_one_or_none()
     
+    async def get_by_id_with(
+        self,
+        id: int,
+        db: AsyncSession,
+        *eager_load,
+        **kwargs: Any,
+    ) -> ModelType | None:
+        """Получить запись по ID с жадной загрузкой отношений.
+        
+        Args:
+            id: Первичный ключ.
+            db: AsyncSession.
+            *eager_load: SQLAlchemy load options (selectinload, joinedload).
+            **kwargs: Дополнительные условия фильтрации.
+            
+        Returns:
+            Запись или None.
+        """
+        query = select(self.model).where(
+            self.model.id == id,
+            **kwargs,
+        ).options(*eager_load)
+        result = await db.execute(query)
+        return result.scalar_one_or_none()
+    
     async def get_all(
         self,
         db: AsyncSession,

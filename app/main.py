@@ -1,6 +1,8 @@
 """Главный файл приложения YouTube Clone."""
 
 from contextlib import asynccontextmanager
+from urllib.parse import quote
+
 from fastapi import FastAPI, Request, HTTPException, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -8,16 +10,32 @@ from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from app.core.config import get_settings
+from app.core.csrf import generate_csrf_token, verify_csrf_token
 from app.api.__init__ import router as api_router
 from app.database.dependencies import get_db
-from app.dependencies import get_optional_user
+from app.dependencies import get_optional_user, get_current_user, require_moderator_or_admin
 from app.services.video import VideoService
 from app.services.comment import CommentService
 from app.services.subscription import SubscriptionService
+from app.services.like import LikeService
+from app.services.moderation import ModerationService
 from app.models.users import User
+from app.models.video import Video
+from app.models.channel import Channel
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 settings = get_settings()
+
+
+def make_response_with_success(redirect_url: str, success_message: str):
+    """Создать редирект с сообщением об успехе через query-параметр."""
+    separator = "&" if "?" in redirect_url else "?"
+    return RedirectResponse(
+        redirect_url + separator + "success=" + quote(success_message),
+        status_code=302,
+    )
 
 
 @asynccontextmanager
@@ -52,6 +70,48 @@ except FileNotFoundError:
 templates = Jinja2Templates(directory="app/templates")
 
 
+# ==================== CSRF Middleware ====================
+
+@app.middleware("http")
+async def add_csrf_token(request: Request, call_next):
+    """Добавить CSRF-токен в контекст шаблонов и установить Cookie для GET-запросов.
+    
+    Токен генерируется ОДИН РАЗ при первом GET и используется для всех страниц.
+    Это предотвращает рассинхронизацию между токеном в форме и cookie.
+    """
+    from app.core.config import get_settings
+    
+    settings = get_settings()
+    csrf_cookie_name = settings.session_cookie + "_csrf"
+    
+    # GET-запрос: используем существующий cookie или генерируем новый
+    if request.method == "GET":
+        existing_token = request.cookies.get(csrf_cookie_name)
+        if existing_token:
+            csrf_token = existing_token
+        else:
+            csrf_token = generate_csrf_token()
+        
+        request.state.csrf_token = csrf_token
+        
+        response = await call_next(request)
+        
+        # Установить cookie только если его ещё нет
+        if not existing_token:
+            response.set_cookie(
+                key=csrf_cookie_name,
+                value=csrf_token,
+                httponly=True,
+                samesite="lax",
+                path="/",
+            )
+        
+        return response
+    
+    # POST и другие методы: cookie уже установлен предыдущим GET-запросом
+    return await call_next(request)
+
+
 @app.get("/health")
 def health_check():
     """Проверка работоспособности приложения."""
@@ -71,10 +131,14 @@ async def index(
     service = VideoService(db)
     videos = await service.get_public_videos(skip=0, limit=50)
     
+    csrf_token = getattr(request.state, "csrf_token", generate_csrf_token())
+    
     return templates.TemplateResponse("index.html", {
         "request": request,
         "current_user": current_user,
         "videos": videos,
+        "csrf_token": csrf_token,
+        "query": None,
     })
 
 
@@ -82,11 +146,15 @@ async def index(
 async def login_page(
     request: Request,
     error: str = None,
+    success: str = None,
 ):
     """Страница входа."""
+    csrf_token = getattr(request.state, "csrf_token", generate_csrf_token())
     return templates.TemplateResponse("login.html", {
         "request": request,
         "error": error,
+        "success": success,
+        "csrf_token": csrf_token,
     })
 
 
@@ -98,9 +166,14 @@ async def login_submit(
     """Обработка входа."""
     from app.services.auth import AuthService
     from app.core.config import get_settings
+    from app.core.csrf import set_csrf_cookie, csrf_protect_form
     
-    username = request.form.get("username")
-    password = request.form.get("password")
+    form = await request.form()
+    
+    await csrf_protect_form(request, form=dict(form))
+    
+    username = form.get("username")
+    password = form.get("password")
     
     if not username or not password:
         return RedirectResponse("/login?error=Введите логин и пароль", status_code=303)
@@ -114,11 +187,11 @@ async def login_submit(
             user_agent=request.headers.get("user-agent"),
         )
         
-        response = RedirectResponse("/", status_code=302)
+        response = make_response_with_success("/", "Вы успешно вошли в аккаунт")
         settings = get_settings()
         
         response.set_cookie(
-            cookie_name=settings.session_cookie,
+            key=settings.session_cookie,
             value=session.session_id,
             httponly=True,
             samesite="lax",
@@ -138,9 +211,11 @@ async def register_page(
     error: str = None,
 ):
     """Страница регистрации."""
+    csrf_token = getattr(request.state, "csrf_token", generate_csrf_token())
     return templates.TemplateResponse("register.html", {
         "request": request,
         "error": error,
+        "csrf_token": csrf_token,
     })
 
 
@@ -151,11 +226,17 @@ async def register_submit(
 ):
     """Обработка регистрации."""
     from app.services.auth import AuthService
+    from app.core.config import get_settings
+    from app.core.csrf import csrf_protect_form
     
-    username = request.form.get("username")
-    email = request.form.get("email")
-    password = request.form.get("password")
-    password_confirm = request.form.get("password_confirm")
+    form = await request.form()
+    
+    await csrf_protect_form(request, form=dict(form))
+    
+    username = form.get("username")
+    email = form.get("email")
+    password = form.get("password")
+    password_confirm = form.get("password_confirm")
     
     if not all([username, email, password]):
         return RedirectResponse("/register?error=Заполните все поля", status_code=303)
@@ -168,7 +249,7 @@ async def register_submit(
     
     try:
         service = AuthService(db)
-        await service.register(
+        user = await service.register(
             username=username,
             email=email,
             password=password,
@@ -177,11 +258,11 @@ async def register_submit(
         # Автоматический вход после регистрации
         session = await service.login(username=username, password=password)
         
-        response = RedirectResponse("/", status_code=302)
+        response = make_response_with_success("/", "Регистрация прошла успешно!")
         settings = get_settings()
         
         response.set_cookie(
-            cookie_name=settings.session_cookie,
+            key=settings.session_cookie,
             value=session.session_id,
             httponly=True,
             samesite="lax",
@@ -226,38 +307,38 @@ async def logout_submit(
 @app.get("/upload", response_class=HTMLResponse)
 async def upload_page(
     request: Request,
-    current_user: User = Depends(get_optional_user),
+    current_user: User = Depends(get_current_user),
     error: str = None,
+    success: str = None,
 ):
     """Страница загрузки видео."""
-    if not current_user:
-        return RedirectResponse("/login", status_code=302)
-    
+    csrf_token = getattr(request.state, "csrf_token", generate_csrf_token())
     return templates.TemplateResponse("upload.html", {
         "request": request,
         "current_user": current_user,
         "error": error,
+        "success": success,
+        "csrf_token": csrf_token,
     })
 
 
 @app.post("/upload")
 async def upload_submit(
     request: Request,
-    current_user: User = Depends(get_optional_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Обработка загрузки видео."""
-    if not current_user:
-        return RedirectResponse("/login", status_code=302)
-    
     from app.services.video import VideoService
-    from app.storage.minio import MinIOStorage
+    from fastapi import UploadFile
     
-    title = request.form.get("title")
-    description = request.form.get("description", "")
-    privacy = request.form.get("privacy", "public")
-    video_file = request.form.get("video_file")
-    thumbnail_file = request.form.get("thumbnail_file")
+    form = await request.form()
+    
+    title = form.get("title", "")
+    description = form.get("description", "")
+    privacy = form.get("privacy", "public")
+    video_file: UploadFile = form.get("video_file")
+    thumbnail_file: UploadFile = form.get("thumbnail_file")
     
     if not title:
         return RedirectResponse("/upload?error=Введите название видео", status_code=303)
@@ -272,6 +353,7 @@ async def upload_submit(
                 status_code=303,
             )
         
+        # Создаём запись видео в БД
         video = await service.create_video(
             channel_id=channel.id,
             title=title,
@@ -279,7 +361,47 @@ async def upload_submit(
             privacy=privacy,
         )
         
-        return RedirectResponse(f"/video/{video.id}", status_code=302)
+        # Загружаем видео файл в хранилище
+        if video_file:
+            content_type = video_file.content_type or "video/mp4"
+            
+            # Проверка размера файла (макс 2GB)
+            video_file.file.seek(0, 2)
+            file_size = video_file.file.tell()
+            video_file.file.seek(0)
+            
+            max_size = 2 * 1024 * 1024 * 1024
+            if file_size > max_size:
+                return RedirectResponse(
+                    "/upload?error=Файл слишком большой. Максимум 2GB",
+                    status_code=303,
+                )
+            
+            await service.upload_video_file(
+                video,
+                video_file.file,
+                content_type=content_type,
+            )
+        
+        # Загружаем превью (опционально)
+        if thumbnail_file:
+            allowed_thumb_types = ["image/jpeg", "image/png", "image/webp"]
+            if thumbnail_file.content_type not in allowed_thumb_types:
+                return RedirectResponse(
+                    "/upload?error=Неподдерживаемый формат превью. Используйте JPG, PNG или WebP",
+                    status_code=303,
+                )
+            
+            await service.upload_thumbnail(
+                video,
+                thumbnail_file.file,
+                content_type=thumbnail_file.content_type,
+            )
+        
+        return make_response_with_success(
+            f"/video/{video.id}",
+            "Видео успешно загружено!",
+        )
         
     except Exception as e:
         return RedirectResponse(f"/upload?error={str(e)}", status_code=303)
@@ -293,15 +415,14 @@ async def video_page(
     db: AsyncSession = Depends(get_db),
 ):
     """Страница просмотра видео."""
-    from app.services.video import VideoService
-    from app.services.comment import CommentService
-    from app.services.subscription import SubscriptionService
-    
     service = VideoService(db)
     video = await service.get_video(video_id=video_id, current_user=current_user)
     
     if not video:
         raise HTTPException(status_code=404, detail="Video not found")
+    
+    # Увеличить счётчик просмотров
+    await service.increment_view_count(video)
     
     # Комментарии
     comment_service = CommentService(db)
@@ -322,7 +443,18 @@ async def video_page(
     )
     
     # Лайки
-    like_count = 0  # Можно получить через like_service
+    like_service = LikeService(db)
+    like_count = await like_service.get_video_like_count(video_id=video_id)
+    
+    # Проверка подписки
+    is_subscribed = False
+    if current_user:
+        is_subscribed = await sub_service.is_subscribed(
+            subscribed_user_id=current_user.id,
+            subscribed_channel_id=video.channel.id,
+        )
+    
+    csrf_token = getattr(request.state, "csrf_token", generate_csrf_token())
     
     return templates.TemplateResponse("video.html", {
         "request": request,
@@ -332,6 +464,8 @@ async def video_page(
         "recommended_videos": recommended,
         "subscriber_count": subscriber_count,
         "like_count": like_count,
+        "csrf_token": csrf_token,
+        "is_subscribed": is_subscribed,
     })
 
 
@@ -347,7 +481,9 @@ async def channel_page(
     from app.services.video import VideoService
     from app.services.subscription import SubscriptionService
     
-    channel = await channel_repo.get_by_id(db, channel_id)
+    channel = await channel_repo.get_by_id_with(
+        db, channel_id, selectinload(Channel.user),
+    )
     
     if not channel:
         raise HTTPException(status_code=404, detail="Channel not found")
@@ -386,10 +522,10 @@ async def profile_page(
 ):
     """Страница профиля пользователя."""
     from app.crud.user import user_repo
-    from app.services.video import VideoService
-    from app.services.subscription import SubscriptionService
     
-    user = await user_repo.get_by_id(db, user_id)
+    user = await user_repo.get_by_id_with(
+        db, user_id, selectinload(User.channel),
+    )
     
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -407,11 +543,19 @@ async def profile_page(
     
     # Подписчики
     subscriber_count = 0
+    is_subscribed = False
     if user.channel:
         sub_service = SubscriptionService(db)
         subscriber_count = await sub_service.get_channel_subscriber_count(
             channel_id=user.channel.id
         )
+        if current_user:
+            is_subscribed = await sub_service.is_subscribed(
+                subscribed_user_id=current_user.id,
+                subscribed_channel_id=user.channel.id,
+            )
+    
+    csrf_token = getattr(request.state, "csrf_token", generate_csrf_token())
     
     return templates.TemplateResponse("profile.html", {
         "request": request,
@@ -419,6 +563,86 @@ async def profile_page(
         "current_user": current_user,
         "videos": videos,
         "subscriber_count": subscriber_count,
+        "csrf_token": csrf_token,
+        "is_subscribed": is_subscribed,
+    })
+
+
+@app.get("/search", response_class=HTMLResponse)
+async def search_page(
+    request: Request,
+    q: str = None,
+    current_user: User = Depends(get_optional_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Поиск видео по названию."""
+    if not q or len(q.strip()) == 0:
+        return templates.TemplateResponse("index.html", {
+            "request": request,
+            "current_user": current_user,
+            "videos": [],
+            "csrf_token": getattr(request.state, "csrf_token", generate_csrf_token()),
+            "query": "",
+        })
+    
+    service = VideoService(db)
+    videos = await service.search_videos(query=q.strip(), skip=0, limit=50)
+    
+    csrf_token = getattr(request.state, "csrf_token", generate_csrf_token())
+    
+    return templates.TemplateResponse("index.html", {
+        "request": request,
+        "current_user": current_user,
+        "videos": videos,
+        "csrf_token": csrf_token,
+        "query": q,
+    })
+
+
+@app.get("/moderation", response_class=HTMLResponse)
+async def moderation_page(
+    request: Request,
+    current_user: User = Depends(require_moderator_or_admin()),
+    db: AsyncSession = Depends(get_db),
+):
+    """Страница модерации."""
+    service = ModerationService(db)
+    reports = await service.get_pending_reports(skip=0, limit=100)
+    
+    csrf_token = getattr(request.state, "csrf_token", generate_csrf_token())
+    
+    # Получаем информацию о репортерах и видео для каждой жалобы
+    report_details = []
+    for report in reports:
+        reporter = None
+        video = None
+        comment = None
+        
+        if report.target_type == "video":
+            from app.models.video import Video
+            result = await db.execute(select(Video).where(Video.id == report.target_id))
+            video = result.scalar_one_or_none()
+        elif report.target_type == "comment":
+            from app.models.comment import Comment
+            result = await db.execute(select(Comment).where(Comment.id == report.target_id))
+            comment = result.scalar_one_or_none()
+        
+        # Получаем информацию о репортере
+        result = await db.execute(select(User).where(User.id == report.reporter_id))
+        reporter = result.scalar_one_or_none()
+        
+        report_details.append({
+            "report": report,
+            "reporter": reporter,
+            "video": video,
+            "comment": comment,
+        })
+    
+    return templates.TemplateResponse("moderation.html", {
+        "request": request,
+        "current_user": current_user,
+        "reports": report_details,
+        "csrf_token": csrf_token,
     })
 
 

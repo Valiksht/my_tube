@@ -51,6 +51,31 @@
         display: flex;
         gap: 12px;
         margin-bottom: 16px;
+        flex-wrap: wrap;
+    }
+    
+    .action-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        border-radius: 20px;
+        border: 1px solid #ddd;
+        background: #f9f9f9;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+    
+    .action-btn:hover {
+        background: #eee;
+    }
+    
+    .action-btn.active {
+        background: #065fd4;
+        color: white;
+        border-color: #065fd4;
     }
     
     .channel-info {
@@ -169,6 +194,12 @@
         font-size: 12px;
         color: #666;
     }
+    
+    @media (max-width: 900px) {
+        .video-player-page {
+            grid-template-columns: 1fr;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -187,12 +218,18 @@
             <div class="video-stats">
                 <span>{{ video.view_count }} просмотров</span>
                 <span>{{ video.created_at.strftime('%d.%m.%Y') }}</span>
+                {% if current_user and current_user.id == video.channel.user.id %}
+                <span style="color: #065fd4;">Ваше видео</span>
+                {% endif %}
             </div>
             
             <div class="video-actions">
                 {% if current_user %}
-                <button class="btn btn-secondary like-btn" data-video-id="{{ video.id }}">
-                    👍 <span id="like-count">{{ like_count }}</span>
+                <button class="action-btn like-btn{% if is_liked %} active{% endif %}" data-video-id="{{ video.id }}">
+                    👍 <span class="like-count">{{ like_count }}</span>
+                </button>
+                <button class="action-btn report-btn" data-target-id="{{ video.id }}" data-target-type="video">
+                    🚩 Жалоба
                 </button>
                 {% endif %}
             </div>
@@ -201,15 +238,15 @@
                 <div class="channel-avatar">👤</div>
                 <div class="channel-details">
                     <p class="channel-name">
-                        <a href="/channel/{{ video.channel.user.id }}">{{ video.channel.user.username }}</a>
+                        <a href="/channel/{{ video.channel.id }}">{{ video.channel.name }}</a>
                     </p>
                     <p class="channel-subscribers">
                         {{ subscriber_count }} подписчиков
                     </p>
                 </div>
                 {% if current_user and current_user.id != video.channel.user.id %}
-                <button class="btn btn-primary subscribe-btn" data-channel-id="{{ video.channel.id }}">
-                    Подписаться
+                <button class="btn btn-primary subscribe-btn{% if is_subscribed %} active{% endif %}" data-channel-id="{{ video.channel.id }}">
+                    {{ 'Отписаться' if is_subscribed else 'Подписаться' }}
                 </button>
                 {% endif %}
             </div>
@@ -224,6 +261,7 @@
             
             {% if current_user %}
             <form action="/api/videos/{{ video.id }}/comments" method="POST" class="comment-form" style="margin: 16px 0;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <textarea name="content" placeholder="Написать комментарий..." 
                           required style="width: 100%; min-height: 80px; padding: 12px; border: 1px solid #ddd; border-radius: 8px; resize: vertical;"></textarea>
                 <button type="submit" class="btn btn-primary" style="margin-top: 8px;">Отправить</button>
@@ -271,45 +309,76 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Like button
-        const likeBtn = document.querySelector('.like-btn');
+        var likeBtn = document.querySelector('.like-btn');
         if (likeBtn) {
-            likeBtn.addEventListener('click', async function() {
-                const videoId = this.dataset.videoId;
-                try {
-                    const response = await fetch(`/api/videos/${videoId}/likes`, {
-                        method: 'POST',
-                        credentials: 'include'
-                    });
-                    if (response.ok) {
-                        const countResponse = await fetch(`/api/videos/${videoId}/likes/count`);
-                        const data = await countResponse.json();
-                        document.getElementById('like-count').textContent = data.like_count;
+            likeBtn.addEventListener('click', function() {
+                var videoId = this.dataset.videoId;
+                var countEl = this.querySelector('.like-count');
+                
+                fetch('/api/videos/' + videoId + '/likes', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'X-CSRF-Token': getCSRFToken()
                     }
-                } catch (error) {
+                })
+                .then(function(response) {
+                    if (response.ok) {
+                        return fetch('/api/videos/' + videoId + '/likes/count');
+                    }
+                    throw new Error('Like failed');
+                })
+                .then(function(response) {
+                    return response.json();
+                })
+                .then(function(data) {
+                    if (countEl) {
+                        countEl.textContent = data.like_count;
+                    }
+                    likeBtn.classList.toggle('active');
+                })
+                .catch(function(error) {
                     console.error('Error:', error);
-                }
+                    showAlert('Не удалось обработать лайк', 'error');
+                });
             });
         }
         
         // Subscribe button
-        const subscribeBtn = document.querySelector('.subscribe-btn');
+        var subscribeBtn = document.querySelector('.subscribe-btn');
         if (subscribeBtn) {
-            subscribeBtn.addEventListener('click', async function() {
-                const channelId = this.dataset.channelId;
-                try {
-                    const response = await fetch(`/api/channels/${channelId}/subscriptions`, {
-                        method: 'POST',
-                        credentials: 'include'
-                    });
-                    if (response.ok) {
-                        this.textContent = 'Отписаться';
-                        const countResponse = await fetch(`/api/channels/${channelId}/subscriptions/count`);
-                        const data = await countResponse.json();
-                        document.querySelector('.channel-subscribers').textContent = data.subscriber_count + ' подписчиков';
+            subscribeBtn.addEventListener('click', function() {
+                var channelId = this.dataset.channelId;
+                var isSubscribed = this.classList.contains('active');
+                
+                fetch('/api/channels/' + channelId + '/subscriptions', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'X-CSRF-Token': getCSRFToken()
                     }
-                } catch (error) {
+                })
+                .then(function(response) {
+                    if (response.ok) {
+                        var btnText = isSubscribed ? 'Подписаться' : 'Отписаться';
+                        this.textContent = btnText;
+                        this.classList.toggle('active');
+                        
+                        var countEl = document.querySelector('.channel-subscribers');
+                        if (countEl) {
+                            return fetch('/api/channels/' + channelId + '/subscriptions/count')
+                                .then(function(r) { return r.json(); })
+                                .then(function(data) {
+                                    countEl.textContent = data.subscriber_count + ' подписчиков';
+                                });
+                        }
+                    }
+                    throw new Error('Subscribe failed');
+                }.bind(this))
+                .catch(function(error) {
                     console.error('Error:', error);
-                }
+                    showAlert('Не удалось обновить подписку', 'error');
+                });
             });
         }
     });

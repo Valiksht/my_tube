@@ -11,7 +11,15 @@
             <p class="profile-email">{{ user.email }}</p>
             <p class="profile-joined">На YouTube с {{ user.created_at.strftime('%B %Y') }}</p>
             <p class="profile-subscribers">{{ subscriber_count }} подписчиков</p>
+            {% if current_user and current_user.id == user.id %}
+            <p class="profile-role">Роль: {{ user.role }}</p>
+            {% endif %}
         </div>
+        {% if current_user and current_user.id != user.id and user.channel %}
+        <button class="btn btn-primary subscribe-btn{% if is_subscribed %} active{% endif %}" data-channel-id="{{ user.channel.id }}">
+            {{ 'Отписаться' if is_subscribed else 'Подписаться' }}
+        </button>
+        {% endif %}
     </div>
     
     {% if user.channel %}
@@ -20,7 +28,17 @@
         {% if user.channel.description %}
         <p>{{ user.channel.description }}</p>
         {% endif %}
+        {% if current_user and current_user.id == user.id %}
+        <a href="/channel/edit/{{ user.channel.id }}" class="btn btn-secondary" style="margin-top: 12px;">Редактировать канал</a>
+        {% endif %}
     </div>
+    {% else %}
+    {% if current_user and current_user.id == user.id %}
+    <div class="channel-section">
+        <p>У вас пока нет канала.</p>
+        <a href="/channel/create" class="btn btn-primary">Создать канал</a>
+    </div>
+    {% endif %}
     {% endif %}
     
     <div class="videos-section">

@@ -5,7 +5,9 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.database.dependencies import get_db
 from app.dependencies import get_current_user, get_optional_user
 from app.schemas.user import UserCreate, UserResponse
 from app.schemas.auth import LoginRequest, TokenResponse
@@ -27,20 +29,18 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 async def register(
     data: UserCreate,
     request: Request,
+    db: AsyncSession = Depends(get_db),
 ):
     """Зарегистрировать нового пользователя.
     
     Args:
         data: Данные пользователя.
         request: FastAPI Request.
+        db: Сессия базы данных.
         
     Returns:
         Созданный пользователь.
     """
-    from app.database.dependencies import get_db
-    from sqlalchemy.ext.asyncio import AsyncSession
-    
-    db: AsyncSession = Depends(get_db)
     settings = get_settings()
     
     try:
@@ -62,21 +62,20 @@ async def register(
 async def login(
     data: LoginRequest,
     request: Request,
+    db: AsyncSession = Depends(get_db),
 ):
     """Войти в аккаунт.
     
     Args:
         data: Логин и пароль.
         request: FastAPI Request (содержит Cookie и headers).
+        db: Сессия базы данных.
         
     Returns:
         Токен доступа.
     """
-    from app.database.dependencies import get_db
-    from sqlalchemy.ext.asyncio import AsyncSession
     from app.core.csrf import set_csrf_cookie
     
-    db: AsyncSession = Depends(get_db)
     settings = get_settings()
     
     ip_address = request.client.host if request.client else None
@@ -100,7 +99,7 @@ async def login(
         
         # Устанавливаем session Cookie
         response.set_cookie(
-            cookie_name=settings.session_cookie,
+            key=settings.session_cookie,
             value=session.session_id,
             httponly=True,
             samesite="lax",
@@ -123,16 +122,14 @@ async def login(
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(
     request: Request,
+    db: AsyncSession = Depends(get_db),
 ):
     """Выйти из аккаунта.
     
     Отзывает текущую сессию и очищает Cookie.
     """
-    from app.database.dependencies import get_db
-    from sqlalchemy.ext.asyncio import AsyncSession
     from app.core.config import get_settings
     
-    db: AsyncSession = Depends(get_db)
     settings = get_settings()
     
     session_id = request.cookies.get(settings.session_cookie)

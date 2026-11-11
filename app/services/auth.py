@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import verify_password, hash_password
@@ -126,9 +127,10 @@ class AuthService:
         """
         query = (
             select(UserSession)
+            .options(selectinload(UserSession.user))
             .where(
                 UserSession.session_id == session_id,
-                UserSession.is_active == "1",
+                UserSession.is_active.is_(True),
                 UserSession.expires_at > datetime.now(timezone.utc),
             )
             .join(User)
@@ -155,7 +157,7 @@ class AuthService:
         session = result.scalar_one_or_none()
         
         if session:
-            session.is_active = "0"
+            session.is_active = False
             await self.db.flush()
     
     async def revoke_all_sessions(self, user_id: int) -> None:
@@ -168,16 +170,14 @@ class AuthService:
             select(UserSession)
             .where(
                 UserSession.user_id == user_id,
-                UserSession.is_active == "1",
+                UserSession.is_active.is_(True),
             )
         )
         result = await self.db.execute(query)
         sessions = result.scalars().all()
         
         for session in sessions:
-            session.is_active = "0"
+            session.is_active = False
         
         await self.db.flush()
 
-
-auth_service = AuthService(None)  # type: ignore[arg-type]

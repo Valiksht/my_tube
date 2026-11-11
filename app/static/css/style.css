@@ -10,8 +10,8 @@
 }
 
 :root {
-    --primary: #ff0000;
-    --primary-hover: #cc0000;
+    --primary: #065fd4;
+    --primary-hover: #044fa0;
     --bg: #ffffff;
     --bg-secondary: #f9f9f9;
     --text: #0f0f0f;
@@ -52,6 +52,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 20px;
 }
 
 .logo {
@@ -59,10 +60,46 @@ body {
     font-weight: 700;
     color: var(--text);
     text-decoration: none;
+    white-space: nowrap;
 }
 
 .logo:hover {
     color: var(--primary);
+}
+
+/* Search form */
+.search-form {
+    display: flex;
+    gap: 8px;
+    flex: 1;
+    max-width: 500px;
+}
+
+.search-form input {
+    flex: 1;
+    padding: 8px 16px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-size: 14px;
+    outline: none;
+}
+
+.search-form input:focus {
+    border-color: var(--primary);
+}
+
+.search-btn {
+    padding: 8px 16px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.2s;
+}
+
+.search-btn:hover {
+    background: var(--border);
 }
 
 .nav {
@@ -79,6 +116,7 @@ body {
     padding: 8px 12px;
     border-radius: 20px;
     transition: background 0.2s;
+    white-space: nowrap;
 }
 
 .nav-link:hover {
@@ -368,6 +406,7 @@ body {
     background: var(--bg-secondary);
     border-radius: var(--radius);
     margin-bottom: 32px;
+    flex-wrap: wrap;
 }
 
 .profile-avatar {
@@ -379,6 +418,7 @@ body {
     align-items: center;
     justify-content: center;
     font-size: 40px;
+    flex-shrink: 0;
 }
 
 .profile-info h1 {
@@ -388,7 +428,8 @@ body {
 
 .profile-email,
 .profile-joined,
-.profile-subscribers {
+.profile-subscribers,
+.profile-role {
     color: var(--text-secondary);
     font-size: 14px;
     margin: 4px 0;
@@ -409,20 +450,67 @@ body {
     margin-bottom: 20px;
 }
 
+/* Action buttons */
+.action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 20px;
+    border: 1px solid #ddd;
+    background: #f9f9f9;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.action-btn:hover {
+    background: #eee;
+}
+
+.action-btn.active {
+    background: #065fd4;
+    color: white;
+    border-color: #065fd4;
+}
+
+/* Subscribe button */
+.subscribe-btn {
+    padding: 8px 20px;
+    font-size: 14px;
+}
+
+.subscribe-btn.active {
+    background: #ddd;
+    color: var(--text);
+}
+
+.subscribe-btn.active:hover {
+    background: #ccc;
+}
+
 /* Responsive */
-@media (max-width: 768px) {
-    .container {
-        padding: 0 16px;
+@media (max-width: 900px) {
+    .header-content {
+        flex-wrap: wrap;
     }
     
-    .header-content {
-        flex-direction: column;
-        gap: 12px;
+    .search-form {
+        order: 3;
+        max-width: 100%;
+        width: 100%;
     }
     
     .nav {
         flex-wrap: wrap;
         justify-content: center;
+    }
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 0 16px;
     }
     
     .video-grid {

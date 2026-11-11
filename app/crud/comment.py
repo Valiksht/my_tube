@@ -2,7 +2,9 @@
 
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from app.crud.base import BaseRepository
 from app.models.comment import Comment
@@ -19,12 +21,15 @@ class CommentRepository(BaseRepository[Comment]):
         limit: int = 100,
     ) -> list[Comment]:
         """Получить комментарии видео."""
-        return await self.get_all(
-            db,
-            skip=skip,
-            limit=limit,
-            video_id=video_id,
+        query = (
+            select(self.model)
+            .where(self.model.video_id == video_id)
+            .options(joinedload(Comment.user))
+            .offset(skip)
+            .limit(limit)
         )
+        result = await db.execute(query)
+        return result.scalars().all()
     
     async def get_by_user(
         self,

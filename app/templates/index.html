@@ -1,10 +1,14 @@
 {% extends "base.html" %}
 
-{% block title %}Главная - YouTube Clone{% endblock %}
+{% block title %}{% if query %}Поиск: {{ query }}{% else %}Главная{% endif %} - YouTube Clone{% endblock %}
 
 {% block content %}
 <div class="home">
+    {% if query %}
+    <h1>Результаты поиска: "{{ query }}"</h1>
+    {% else %}
     <h1>Популярные видео</h1>
+    {% endif %}
     
     {% if videos %}
         <div class="video-grid">
@@ -28,11 +32,15 @@
         </div>
     {% else %}
         <div class="empty-state">
+            {% if query %}
+            <p>По запросу "{{ query }}" ничего не найдено. Попробуйте другой запрос.</p>
+            {% else %}
             <p>Пока нет видео. Загрузите первое! 🎬</p>
             {% if current_user %}
             <a href="/upload" class="btn btn-primary">Загрузить видео</a>
             {% else %}
             <a href="/register" class="btn btn-primary">Зарегистрироваться</a>
+            {% endif %}
             {% endif %}
         </div>
     {% endif %}

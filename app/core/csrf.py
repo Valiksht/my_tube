@@ -6,14 +6,15 @@
 3. Сервер сравнивает оба значения
 """
 
+import logging
 import secrets
-from functools import wraps
-from typing import Callable
 
 from fastapi import Request, HTTPException, status
 from fastapi.responses import Response
 
 from app.core.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 
 def generate_csrf_token() -> str:
@@ -55,13 +56,16 @@ def get_csrf_token(request: Request) -> str:
     )
 
 
-def verify_csrf_token(request: Request) -> bool:
+async def verify_csrf_token(request: Request, form: dict = None) -> bool:
     """Проверить CSRF токен.
     
-    Сравнивает токен из Cookie с токеном из заголовка.
+    Поддерживает два паттерна:
+    1. Double-submit cookie: токен из Cookie сравнивается с токеном из заголовка X-CSRF-Token.
+    2. Form field: токен из Cookie сравнивается с токеном из поля формы csrf_token.
     
     Args:
         request: FastAPI Request объект.
+        form: Словарь с данными формы (опционально, для паттерна form field).
         
     Returns:
         True если токен валиден.
@@ -74,38 +78,49 @@ def verify_csrf_token(request: Request) -> bool:
     cookie_token = request.cookies.get(settings.session_cookie + "_csrf")
     header_token = request.headers.get("X-CSRF-Token")
     
-    if not cookie_token or not header_token:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="CSRF token missing",
-        )
+    # Паттерн 1: заголовок X-CSRF-Token (double-submit cookie)
+    if cookie_token and header_token:
+        if not secrets.compare_digest(cookie_token, header_token):
+            logger.warning("CSRF token mismatch (header)")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="CSRF token mismatch",
+            )
+        return True
     
-    if not secrets.compare_digest(cookie_token, header_token):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="CSRF token mismatch",
-        )
+    # Паттерн 2: поле формы csrf_token
+    if form:
+        form_token = form.get("csrf_token")
+        if form_token and cookie_token:
+            if secrets.compare_digest(cookie_token, form_token):
+                return True
+            logger.warning("CSRF token mismatch (form)")
+        elif not cookie_token:
+            logger.warning("CSRF cookie not found on request")
+        elif not form_token:
+            logger.warning(
+                "CSRF form token not found. Form keys: %s", list(form.keys())
+            )
     
-    return True
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="CSRF token missing or invalid",
+    )
 
 
-def csrf_protect(func: Callable) -> Callable:
-    """Декоратор для CSRF защиты обработчиков.
+async def csrf_protect_form(request: Request, form: dict = None) -> None:
+    """Зависимость FastAPI для CSRF-защиты HTML-форм.
     
-    Используется для функций-обработчиков HTML форм.
-    Для FastAPI зависимостей лучше использовать verify_csrf_token напрямую.
+    Проверяет CSRF токен из Cookie и поля формы csrf_token.
+    Используется как Depends() в обработчиках POST-запросов.
     
     Example:
-        @app.post("/upload", methods=["POST"])
-        @csrf_protect
-        async def handle_upload(request: Request):
+        @app.post("/register")
+        async def register(request: Request, db: AsyncSession = Depends(get_db),
+                           _csrf: None = Depends(csrf_protect_form)):
             ...
     """
-    @wraps(func)
-    async def wrapper(*args, request: Request, **kwargs):
-        verify_csrf_token(request)
-        return await func(*args, request=request, **kwargs)
-    return wrapper
+    await verify_csrf_token(request, form=form)
 
 
 def set_csrf_cookie(response: Response) -> Response:
@@ -121,7 +136,7 @@ def set_csrf_cookie(response: Response) -> Response:
     token = generate_csrf_token()
     
     response.set_cookie(
-        cookie_name=settings.session_cookie + "_csrf",
+        key=settings.session_cookie + "_csrf",
         value=token,
         httponly=True,
         samesite="lax",
@@ -135,6 +150,6 @@ __all__ = [
     "generate_csrf_token",
     "get_csrf_token",
     "verify_csrf_token",
-    "csrf_protect",
+    "csrf_protect_form",
     "set_csrf_cookie",
 ]

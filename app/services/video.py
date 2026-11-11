@@ -9,6 +9,7 @@ import tempfile
 from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.models.video import Video
 from app.models.channel import Channel
@@ -28,7 +29,11 @@ class VideoService:
         storage: BaseStorage | None = None,
     ):
         self.db = db
-        self.storage = storage or None
+        if storage is not None:
+            self.storage = storage
+        else:
+            from app.storage.factory import get_storage
+            self.storage = get_storage()
     
     async def create_video(
         self,
@@ -145,7 +150,11 @@ class VideoService:
         Returns:
             Видео или None.
         """
-        video = await video_repo.get_by_id(self.db, video_id)
+        video = await video_repo.get_by_id_with(
+            self.db,
+            video_id,
+            selectinload(Video.channel),
+        )
         if not video:
             return None
         
@@ -340,5 +349,3 @@ class VideoService:
         except ValueError:
             return parts[-1]
 
-
-video_service = VideoService(None)  # type: ignore[arg-type]

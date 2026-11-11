@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+
+{% block title %}Модерация - YouTube Clone{% endblock %}
+
+{% block extra_css %}
+<style>
+    .moderation-page {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    
+    .moderation-page h1 {
+        margin-bottom: 24px;
+    }
+    
+    .reports-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 16px;
+    }
+    
+    .reports-table th,
+    .reports-table td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .reports-table th {
+        background: #f9f9f9;
+        font-weight: 600;
+        font-size: 14px;
+    }
+    
+    .reports-table tr:hover {
+        background: #f5f5f5;
+    }
+    
+    .status-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    
+    .status-pending {
+        background: #fff3cd;
+        color: #856404;
+    }
+    
+    .status-resolved {
+        background: #d4edda;
+        color: #155724;
+    }
+    
+    .status-rejected {
+        background: #f8d7da;
+        color: #721c24;
+    }
+    
+    .target-type {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 600;
+        background: #e9ecef;
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+    }
+    
+    .action-buttons .btn {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 40px;
+        color: #666;
+    }
+    
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+    }
+    
+    .modal-overlay.active {
+        display: flex;
+    }
+    
+    .modal {
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        width: 90%;
+        max-width: 500px;
+    }
+    
+    .modal h3 {
+        margin-top: 0;
+    }
+    
+    .modal textarea {
+        width: 100%;
+        min-height: 100px;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        margin: 12px 0;
+        resize: vertical;
+    }
+    
+    .modal-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="moderation-page">
+    <h1>Модерация контента</h1>
+    
+    {% if reports %}
+    <table class="reports-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Жалобщик</th>
+                <th>Объект</th>
+                <th>Причина</th>
+                <th>Статус</th>
+                <th>Дата</th>
+                <th>Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for detail in reports %}
+            <tr>
+                <td>#{{ detail.report.id }}</td>
+                <td>{{ detail.reporter.username if detail.reporter else 'Неизвестно' }}</td>
+                <td>
+                    <span class="target-type">{{ detail.report.target_type|upper }}</span>
+                    {% if detail.video %}
+                    <a href="/video/{{ detail.video.id }}">{{ detail.video.title }}</a>
+                    {% elif detail.comment %}
+                    <span>Комментарий</span>
+                    {% endif %}
+                </td>
+                <td>{{ detail.report.reason[:100] }}{% if detail.report.reason|length > 100 %}...{% endif %}</td>
+                <td>
+                    <span class="status-badge status-{{ detail.report.status }}">
+                        {{ detail.report.status|upper }}
+                    </span>
+                </td>
+                <td>{{ detail.report.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                <td>
+                    {% if detail.report.status == 'pending' %}
+                    <div class="action-buttons">
+                        <button class="btn btn-primary" onclick="showResolveModal({{ detail.report.id }}, 'resolved')">Принять</button>
+                        <button class="btn btn-secondary" onclick="showResolveModal({{ detail.report.id }}, 'rejected')">Отклонить</button>
+                    </div>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <p>Нет жалоб на модерацию. Всё чисто! ✅</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Модальное окно для решения жалобы -->
+<div class="modal-overlay" id="resolveModal">
+    <div class="modal">
+        <h3>Обработать жалобу</h3>
+        <input type="hidden" id="reportId">
+        <input type="hidden" id="reportAction">
+        
+        <label for="moderatorNotes">Заметки модератора (опционально):</label>
+        <textarea id="moderatorNotes" placeholder="Причина решения..."></textarea>
+        
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeResolveModal()">Отмена</button>
+            <button class="btn btn-primary" onclick="submitResolve()">Сохранить</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function showResolveModal(reportId, action) {
+        document.getElementById('reportId').value = reportId;
+        document.getElementById('reportAction').value = action;
+        document.getElementById('resolveModal').classList.add('active');
+    }
+    
+    function closeResolveModal() {
+        document.getElementById('resolveModal').classList.remove('active');
+        document.getElementById('moderatorNotes').value = '';
+    }
+    
+    function submitResolve() {
+        var reportId = document.getElementById('reportId').value;
+        var action = document.getElementById('reportAction').value;
+        var notes = document.getElementById('moderatorNotes').value;
+        
+        fetch('/api/moderation/reports/' + reportId + '/resolve?action=' + action, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': getCSRFToken()
+            },
+            body: JSON.stringify({ notes: notes })
+        })
+        .then(function(response) {
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                showAlert('Ошибка при обработке жалобы', 'error');
+            }
+        })
+        .catch(function(error) {
+            console.error('Error:', error);
+            showAlert('Ошибка при обработке жалобы', 'error');
+        });
+    }
+    
+    // Закрыть модалку по клику на оверлей
+    document.getElementById('resolveModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeResolveModal();
+        }
+    });
+</script>
+{% endblock %}

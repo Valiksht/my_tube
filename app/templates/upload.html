@@ -11,6 +11,8 @@
     {% endif %}
     
     <form action="/upload" method="POST" enctype="multipart/form-data" class="upload-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        
         <div class="form-group">
             <label for="title">Название видео *</label>
             <input type="text" id="title" name="title" required 

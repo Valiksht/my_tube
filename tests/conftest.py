@@ -11,6 +11,13 @@ from app.main import app
 from app.database.dependencies import get_db
 from app.core.config import get_settings
 
+# Отключить кэш Jinja2 для тестов.
+# LRU cache не может хешировать контекст с request (unhashable type: 'dict').
+# Заменяем Jinja2Templates на новый без кэша.
+from starlette.templating import Jinja2Templates
+import app.main as main_module
+main_module.templates = Jinja2Templates(directory="app/templates")
+
 # Тестовая база данных
 TEST_DATABASE_URL = "postgresql+asyncpg://postgres:postgres@localhost/mytube_db_test"
 

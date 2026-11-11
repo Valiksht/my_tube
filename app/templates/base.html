@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
     <title>{% block title %}YouTube Clone{% endblock %}</title>
     <link rel="stylesheet" href="/static/css/style.css">
     {% block extra_css %}{% endblock %}
@@ -11,13 +12,21 @@
     <header class="header">
         <div class="container">
             <div class="header-content">
-                <a href="/" class="logo">🎬 YouTube Clone</a>
+                <a href="/" class="logo">YouTube Clone</a>
+                <form action="/search" method="GET" class="search-form">
+                    <input type="text" name="q" placeholder="Поиск" value="{{ query|default('') }}">
+                    <button type="submit" class="search-btn">Найти</button>
+                </form>
                 <nav class="nav">
                     {% if current_user %}
                         <a href="/upload" class="nav-link">Загрузить</a>
                         <a href="/profile/{{ current_user.id }}" class="nav-link">Профиль</a>
                         <span class="user-info">{{ current_user.username }}</span>
+                        {% if current_user.role in ['moderator', 'admin'] %}
+                            <a href="/moderation" class="nav-link">Модерация</a>
+                        {% endif %}
                         <form action="/api/auth/logout" method="POST" class="logout-form">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                             <button type="submit" class="btn-logout">Выйти</button>
                         </form>
                     {% else %}
@@ -31,6 +40,12 @@
 
     <main class="main">
         <div class="container">
+            {% if success %}
+            <div class="alert alert-success">{{ success }}</div>
+            {% endif %}
+            {% if error %}
+            <div class="alert alert-error">{{ error }}</div>
+            {% endif %}
             {% block content %}{% endblock %}
         </div>
     </main>

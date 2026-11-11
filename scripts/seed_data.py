@@ -9,87 +9,95 @@
 
 import asyncio
 import sys
-from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-# Добавляем корень проекта в путь
-sys.path.insert(0, str(Path(__file__).parent.parent))
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
+# Добавляем корень проекта в путь импорта.
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
 
 from app.core.config import get_settings
 from app.core.security import hash_password
-from app.models.users import User
 from app.models.channel import Channel
-from app.models.video import Video
 from app.models.comment import Comment
+from app.models.enum import UserRole, VideoPrivacy
 from app.models.like import Like
 from app.models.subscription import Subscription
-from app.models.enum import UserRole, VideoPrivacy
+from app.models.users import User
+from app.models.video import Video
 
 
-# Получаем DATABASE_URL из общей конфигурации приложения
-_settings = get_settings()
-DATABASE_URL = _settings.database_url
+DATABASE_URL = get_settings().database_url
 
+
+# ---------------------------------------------------------------------------
 # Тестовые данные
+# ---------------------------------------------------------------------------
+
 TEST_USERS = [
     {
         "username": "admin",
         "email": "admin@mytube.com",
         "password": "admin123",
-        "role": "admin",
+        "role": UserRole.ADMIN.value,
     },
     {
         "username": "moderator",
         "email": "mod@mytube.com",
         "password": "mod123456",
-        "role": "moderator",
+        "role": UserRole.MODERATOR.value,
     },
     {
         "username": "user1",
         "email": "user1@mytube.com",
         "password": "user123456",
-        "role": "user",
+        "role": UserRole.USER.value,
     },
     {
         "username": "user2",
         "email": "user2@mytube.com",
         "password": "user123456",
-        "role": "user",
+        "role": UserRole.USER.value,
     },
     {
         "username": "user3",
         "email": "user3@mytube.com",
         "password": "user123456",
-        "role": "user",
+        "role": UserRole.USER.value,
     },
 ]
 
 TEST_CHANNELS = [
     {
-        "user_id": 1,
+        "owner_username": "admin",
         "name": "Admin Channel",
         "description": "Официальный канал администратора",
     },
     {
-        "user_id": 2,
+        "owner_username": "moderator",
         "name": "Moderator Hub",
         "description": "Канал модератора",
     },
     {
-        "user_id": 3,
+        "owner_username": "user1",
         "name": "Tech Reviews",
         "description": "Обзоры технологий и гаджетов",
     },
     {
-        "user_id": 4,
+        "owner_username": "user2",
         "name": "Cooking Master",
         "description": "Кулинарные рецепты и советы",
     },
     {
-        "user_id": 5,
+        "owner_username": "user3",
         "name": "Gaming Zone",
         "description": "Игровые обзоры и стримы",
     },
@@ -97,91 +105,113 @@ TEST_CHANNELS = [
 
 TEST_VIDEOS = [
     {
-        "channel_id": 3,
+        "owner_username": "user1",
         "title": "Обзор iPhone 15 Pro Max",
-        "description": "Подробный обзор нового флагмана Apple. Рассматриваем камеру, производительность, батарею и все новые функции.",
-        "privacy": "public",
+        "description": (
+            "Подробный обзор нового флагмана Apple. Рассматриваем камеру, "
+            "производительность, батарею и все новые функции."
+        ),
+        "privacy": VideoPrivacy.PUBLIC.value,
         "duration": 845,
         "view_count": 15420,
         "is_published": True,
     },
     {
-        "channel_id": 3,
+        "owner_username": "user1",
         "title": "Лучшие смартфоны 2024 года",
-        "description": "Топ-10 смартфонов этого года. Сравнение камер, производительности и цены.",
-        "privacy": "public",
+        "description": (
+            "Топ-10 смартфонов этого года. Сравнение камер, "
+            "производительности и цены."
+        ),
+        "privacy": VideoPrivacy.PUBLIC.value,
         "duration": 1230,
         "view_count": 8930,
         "is_published": True,
     },
     {
-        "channel_id": 3,
+        "owner_username": "user1",
         "title": "Как выбрать ноутбук в 2024",
-        "description": "Гайд по выбору ноутбука: от бюджетных до игровых моделей.",
-        "privacy": "public",
+        "description": (
+            "Гайд по выбору ноутбука: от бюджетных до игровых моделей."
+        ),
+        "privacy": VideoPrivacy.PUBLIC.value,
         "duration": 960,
         "view_count": 5670,
         "is_published": True,
     },
     {
-        "channel_id": 4,
+        "owner_username": "user2",
         "title": "Идеальный борщ — классический рецепт",
-        "description": "Учимся готовить настоящий борщ по бабушкиному рецепту. Секреты приготовления.",
-        "privacy": "public",
+        "description": (
+            "Учимся готовить настоящий борщ по бабушкиному рецепту. "
+            "Секреты приготовления."
+        ),
+        "privacy": VideoPrivacy.PUBLIC.value,
         "duration": 720,
         "view_count": 23100,
         "is_published": True,
     },
     {
-        "channel_id": 4,
+        "owner_username": "user2",
         "title": "5 рецептов за 15 минут",
-        "description": "Быстрые и вкусные рецепты для тех, кто не любит тратить время на кухне.",
-        "privacy": "public",
+        "description": (
+            "Быстрые и вкусные рецепты для тех, кто не любит "
+            "тратить время на кухне."
+        ),
+        "privacy": VideoPrivacy.PUBLIC.value,
         "duration": 900,
         "view_count": 18750,
         "is_published": True,
     },
     {
-        "channel_id": 4,
+        "owner_username": "user2",
         "title": "Домашний хлеб без дрожжей",
-        "description": "Простой рецепт вкусного домашнего хлеба без использования дрожжей.",
-        "privacy": "public",
+        "description": (
+            "Простой рецепт вкусного домашнего хлеба "
+            "без использования дрожжей."
+        ),
+        "privacy": VideoPrivacy.PUBLIC.value,
         "duration": 540,
         "view_count": 12300,
         "is_published": True,
     },
     {
-        "channel_id": 5,
+        "owner_username": "user3",
         "title": "GTA 6 — Первый взгляд",
-        "description": "Анализируем первый трейлер GTA 6. Всё что мы знаем о игре.",
-        "privacy": "public",
+        "description": (
+            "Анализируем первый трейлер GTA 6. Всё что мы знаем о игре."
+        ),
+        "privacy": VideoPrivacy.PUBLIC.value,
         "duration": 680,
         "view_count": 45200,
         "is_published": True,
     },
     {
-        "channel_id": 5,
+        "owner_username": "user3",
         "title": "Топ-10 игр 2024 года",
         "description": "Лучшие игры этого года по версии нашего канала.",
-        "privacy": "public",
+        "privacy": VideoPrivacy.PUBLIC.value,
         "duration": 1500,
         "view_count": 32100,
         "is_published": True,
     },
     {
-        "channel_id": 5,
+        "owner_username": "user3",
         "title": "Как собрать ПК для игр",
-        "description": "Полное руководство по сборке игрового компьютера: от выбора комплектующих до настройки.",
-        "privacy": "public",
+        "description": (
+            "Полное руководство по сборке игрового компьютера: "
+            "от выбора комплектующих до настройки."
+        ),
+        "privacy": VideoPrivacy.PUBLIC.value,
         "duration": 2100,
         "view_count": 28900,
         "is_published": True,
     },
     {
-        "channel_id": 3,
+        "owner_username": "user1",
         "title": "Секретный проект",
         "description": "Это приватное видео, видимое только владельцу канала.",
-        "privacy": "private",
+        "privacy": VideoPrivacy.PRIVATE.value,
         "duration": 300,
         "view_count": 0,
         "is_published": False,
@@ -189,184 +219,381 @@ TEST_VIDEOS = [
 ]
 
 TEST_COMMENTS = [
-    {"video_id": 1, "user_id": 4, "content": "Отличный обзор! Ждал выхода этого телефона."},
-    {"video_id": 1, "user_id": 5, "content": "Камера просто огонь 🔥"},
-    {"video_id": 2, "user_id": 3, "content": "Согласен с рейтингом, но Sony была бы выше."},
-    {"video_id": 4, "user_id": 3, "content": "Попробовала по рецепту — получилось идеально!"},
-    {"video_id": 4, "user_id": 5, "content": "Бабушка такой же борщ готовила 😊"},
-    {"video_id": 5, "user_id": 4, "content": "Рецепт №3 — мой любимый, готовлю каждую неделю."},
-    {"video_id": 7, "user_id": 3, "content": "Наконец-то дождались! GTA 6 будет топ."},
-    {"video_id": 7, "user_id": 4, "content": "Графика выглядит невероятно!"},
-    {"video_id": 8, "user_id": 5, "content": "Elden Ring заслуживал первого места!"},
-    {"video_id": 9, "user_id": 3, "content": "Собрал ПК по гайду — работает отлично!"},
-    {"video_id": 1, "user_id": 3, "content": "Можно ли сравнить с Samsung S24?"},
-    {"video_id": 6, "user_id": 4, "content": "Хлеб получился супер, спасибо за рецепт!"},
-    {"video_id": 10, "user_id": 5, "content": "Когда релиз GTA 6?"},
-    {"video_id": 3, "user_id": 4, "content": "Беру MacBook Air M3, рекомендую!"},
-    {"video_id": 8, "user_id": 3, "content": "Cyberpunk 2077 — моя игра года!"},
+    {
+        "video_title": "Обзор iPhone 15 Pro Max",
+        "author_username": "user2",
+        "content": "Отличный обзор! Ждал выхода этого телефона.",
+    },
+    {
+        "video_title": "Обзор iPhone 15 Pro Max",
+        "author_username": "user3",
+        "content": "Камера просто огонь 🔥",
+    },
+    {
+        "video_title": "Лучшие смартфоны 2024 года",
+        "author_username": "user1",
+        "content": "Согласен с рейтингом, но Sony была бы выше.",
+    },
+    {
+        "video_title": "Идеальный борщ — классический рецепт",
+        "author_username": "user1",
+        "content": "Попробовала по рецепту — получилось идеально!",
+    },
+    {
+        "video_title": "Идеальный борщ — классический рецепт",
+        "author_username": "user3",
+        "content": "Бабушка такой же борщ готовила 😊",
+    },
+    {
+        "video_title": "5 рецептов за 15 минут",
+        "author_username": "user2",
+        "content": "Рецепт №3 — мой любимый, готовлю каждую неделю.",
+    },
+    {
+        "video_title": "GTA 6 — Первый взгляд",
+        "author_username": "user1",
+        "content": "Наконец-то дождались! GTA 6 будет топ.",
+    },
+    {
+        "video_title": "GTA 6 — Первый взгляд",
+        "author_username": "user2",
+        "content": "Графика выглядит невероятно!",
+    },
+    {
+        "video_title": "Топ-10 игр 2024 года",
+        "author_username": "user3",
+        "content": "Elden Ring заслуживал первого места!",
+    },
+    {
+        "video_title": "Как собрать ПК для игр",
+        "author_username": "user1",
+        "content": "Собрал ПК по гайду — работает отлично!",
+    },
+    {
+        "video_title": "Обзор iPhone 15 Pro Max",
+        "author_username": "user1",
+        "content": "Можно ли сравнить с Samsung S24?",
+    },
+    {
+        "video_title": "Домашний хлеб без дрожжей",
+        "author_username": "user2",
+        "content": "Хлеб получился супер, спасибо за рецепт!",
+    },
+    {
+        "video_title": "Секретный проект",
+        "author_username": "user3",
+        "content": "Когда релиз GTA 6?",
+    },
+    {
+        "video_title": "Как выбрать ноутбук в 2024",
+        "author_username": "user2",
+        "content": "Беру MacBook Air M3, рекомендую!",
+    },
+    {
+        "video_title": "Топ-10 игр 2024 года",
+        "author_username": "user1",
+        "content": "Cyberpunk 2077 — моя игра года!",
+    },
 ]
 
 TEST_LIKES = [
-    {"video_id": 1, "user_id": 4},
-    {"video_id": 1, "user_id": 5},
-    {"video_id": 1, "user_id": 3},
-    {"video_id": 2, "user_id": 3},
-    {"video_id": 2, "user_id": 5},
-    {"video_id": 4, "user_id": 3},
-    {"video_id": 4, "user_id": 5},
-    {"video_id": 4, "user_id": 4},
-    {"video_id": 7, "user_id": 3},
-    {"video_id": 7, "user_id": 4},
-    {"video_id": 8, "user_id": 3},
-    {"video_id": 8, "user_id": 4},
-    {"video_id": 8, "user_id": 5},
-    {"video_id": 9, "user_id": 3},
-    {"video_id": 9, "user_id": 4},
+    {"video_title": "Обзор iPhone 15 Pro Max", "username": "user2"},
+    {"video_title": "Обзор iPhone 15 Pro Max", "username": "user3"},
+    {"video_title": "Обзор iPhone 15 Pro Max", "username": "user1"},
+    {"video_title": "Лучшие смартфоны 2024 года", "username": "user1"},
+    {"video_title": "Лучшие смартфоны 2024 года", "username": "user3"},
+    {"video_title": "Идеальный борщ — классический рецепт", "username": "user1"},
+    {"video_title": "Идеальный борщ — классический рецепт", "username": "user3"},
+    {"video_title": "Идеальный борщ — классический рецепт", "username": "user2"},
+    {"video_title": "GTA 6 — Первый взгляд", "username": "user1"},
+    {"video_title": "GTA 6 — Первый взгляд", "username": "user2"},
+    {"video_title": "Топ-10 игр 2024 года", "username": "user1"},
+    {"video_title": "Топ-10 игр 2024 года", "username": "user2"},
+    {"video_title": "Топ-10 игр 2024 года", "username": "user3"},
+    {"video_title": "Как собрать ПК для игр", "username": "user1"},
+    {"video_title": "Как собрать ПК для игр", "username": "user2"},
 ]
 
 TEST_SUBSCRIPTIONS = [
-    {"subscribed_user_id": 3, "subscribed_channel_id": 4},
-    {"subscribed_user_id": 3, "subscribed_channel_id": 5},
-    {"subscribed_user_id": 4, "subscribed_channel_id": 3},
-    {"subscribed_user_id": 4, "subscribed_channel_id": 5},
-    {"subscribed_user_id": 5, "subscribed_channel_id": 3},
-    {"subscribed_user_id": 5, "subscribed_channel_id": 4},
+    {"subscriber_username": "user1", "channel_owner_username": "user2"},
+    {"subscriber_username": "user1", "channel_owner_username": "user3"},
+    {"subscriber_username": "user2", "channel_owner_username": "user1"},
+    {"subscriber_username": "user2", "channel_owner_username": "user3"},
+    {"subscriber_username": "user3", "channel_owner_username": "user1"},
+    {"subscriber_username": "user3", "channel_owner_username": "user2"},
 ]
 
 
-async def seed_database():
-    """Заполнить базу данных тестовыми данными."""
-    print("🚀 Запуск скрипта заполнения базы данных...")
-    
-    # Создаём движок
-    engine = create_async_engine(DATABASE_URL, echo=False)
-    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-    
-    async with async_session() as session:
-        # Проверяем, есть ли уже данные
-        from sqlalchemy import select, func
-        
-        user_count = await session.execute(select(func.count()).select_from(User))
-        if user_count.scalar() > 0:
-            print("⚠️  База данных уже содержит данные. Пропускаем.")
-            await engine.dispose()
-            return
-        
-        print("\n📝 Создание пользователей...")
-        users = []
+# ---------------------------------------------------------------------------
+# Проверка состояния базы данных
+# ---------------------------------------------------------------------------
+
+TARGET_MODELS = (
+    User,
+    Channel,
+    Video,
+    Comment,
+    Like,
+    Subscription,
+)
+
+
+async def ensure_database_is_empty(session: AsyncSession) -> None:
+    """Запретить заполнение, если целевые таблицы уже содержат данные."""
+    for model in TARGET_MODELS:
+        result = await session.scalar(
+            select(model.id).limit(1)
+        )
+
+        if result is not None:
+            raise RuntimeError(
+                f"Таблица '{model.__tablename__}' уже содержит данные. "
+                "Заполнение отменено во избежание конфликтов. "
+                "Используйте пустую dev-базу данных."
+            )
+
+
+# ---------------------------------------------------------------------------
+# Создание пользователей
+# ---------------------------------------------------------------------------
+
+async def create_users(
+    session: AsyncSession,
+) -> dict[str, User]:
+    """Создать пользователей и вернуть словарь username -> User."""
+    users_by_username: dict[str, User] = {}
+
+    for user_data in TEST_USERS:
+        user = User(
+            username=user_data["username"],
+            email=user_data["email"],
+            hashed_password=hash_password(user_data["password"]),
+            role=user_data["role"],
+            is_active=True,
+        )
+
+        session.add(user)
+        users_by_username[user.username] = user
+
+    await session.flush()
+
+    return users_by_username
+
+
+# ---------------------------------------------------------------------------
+# Создание каналов
+# ---------------------------------------------------------------------------
+
+async def create_channels(
+    session: AsyncSession,
+    users_by_username: dict[str, User],
+) -> dict[str, Channel]:
+    """Создать каналы и вернуть словарь username владельца -> Channel."""
+    channels_by_owner_username: dict[str, Channel] = {}
+
+    for channel_data in TEST_CHANNELS:
+        owner_username = channel_data["owner_username"]
+
+        channel = Channel(
+            user=users_by_username[owner_username],
+            name=channel_data["name"],
+            description=channel_data["description"],
+        )
+
+        session.add(channel)
+        channels_by_owner_username[owner_username] = channel
+
+    await session.flush()
+
+    return channels_by_owner_username
+
+
+# ---------------------------------------------------------------------------
+# Создание видео
+# ---------------------------------------------------------------------------
+
+async def create_videos(
+    session: AsyncSession,
+    channels_by_owner_username: dict[str, Channel],
+) -> dict[str, Video]:
+    """Создать видео и вернуть словарь title -> Video."""
+    videos_by_title: dict[str, Video] = {}
+
+    for video_data in TEST_VIDEOS:
+        owner_username = video_data["owner_username"]
+
+        video = Video(
+            channel=channels_by_owner_username[owner_username],
+            title=video_data["title"],
+            description=video_data["description"],
+            privacy=video_data["privacy"],
+            duration=video_data["duration"],
+            view_count=video_data["view_count"],
+            is_published=video_data["is_published"],
+        )
+
+        session.add(video)
+        videos_by_title[video.title] = video
+
+    await session.flush()
+
+    return videos_by_title
+
+
+# ---------------------------------------------------------------------------
+# Создание комментариев, лайков и подписок
+# ---------------------------------------------------------------------------
+
+async def create_comments(
+    session: AsyncSession,
+    users_by_username: dict[str, User],
+    videos_by_title: dict[str, Video],
+) -> None:
+    """Создать тестовые комментарии."""
+    for comment_data in TEST_COMMENTS:
+        comment = Comment(
+            video=videos_by_title[comment_data["video_title"]],
+            user=users_by_username[comment_data["author_username"]],
+            content=comment_data["content"],
+        )
+
+        session.add(comment)
+
+    await session.flush()
+
+
+async def create_likes(
+    session: AsyncSession,
+    users_by_username: dict[str, User],
+    videos_by_title: dict[str, Video],
+) -> None:
+    """Создать тестовые лайки."""
+    for like_data in TEST_LIKES:
+        like = Like(
+            video=videos_by_title[like_data["video_title"]],
+            user=users_by_username[like_data["username"]],
+        )
+
+        session.add(like)
+
+    await session.flush()
+
+
+async def create_subscriptions(
+    session: AsyncSession,
+    users_by_username: dict[str, User],
+    channels_by_owner_username: dict[str, Channel],
+) -> None:
+    """Создать тестовые подписки."""
+    for subscription_data in TEST_SUBSCRIPTIONS:
+        subscription = Subscription(
+            subscribed_user=users_by_username[
+                subscription_data["subscriber_username"]
+            ],
+            subscribed_channel=channels_by_owner_username[
+                subscription_data["channel_owner_username"]
+            ],
+        )
+
+        session.add(subscription)
+
+    await session.flush()
+
+
+# ---------------------------------------------------------------------------
+# Основная функция
+# ---------------------------------------------------------------------------
+
+async def seed_database() -> None:
+    """Заполнить пустую базу данных тестовыми данными."""
+    print("🚀 Запуск заполнения базы данных...")
+
+    engine: AsyncEngine | None = None
+
+    try:
+        engine = create_async_engine(
+            DATABASE_URL,
+            echo=False,
+        )
+
+        session_factory = async_sessionmaker(
+            bind=engine,
+            class_=AsyncSession,
+            expire_on_commit=False,
+        )
+
+        async with session_factory() as session:
+            async with session.begin():
+                await ensure_database_is_empty(session)
+
+                users_by_username = await create_users(session)
+
+                channels_by_owner_username = await create_channels(
+                    session,
+                    users_by_username,
+                )
+
+                videos_by_title = await create_videos(
+                    session,
+                    channels_by_owner_username,
+                )
+
+                await create_comments(
+                    session,
+                    users_by_username,
+                    videos_by_title,
+                )
+
+                await create_likes(
+                    session,
+                    users_by_username,
+                    videos_by_title,
+                )
+
+                await create_subscriptions(
+                    session,
+                    users_by_username,
+                    channels_by_owner_username,
+                )
+
+        print("\n✅ База данных успешно заполнена!")
+        print("\nСоздано:")
+        print(f"  Пользователей: {len(TEST_USERS)}")
+        print(f"  Каналов: {len(TEST_CHANNELS)}")
+        print(f"  Видео: {len(TEST_VIDEOS)}")
+        print(f"  Комментариев: {len(TEST_COMMENTS)}")
+        print(f"  Лайков: {len(TEST_LIKES)}")
+        print(f"  Подписок: {len(TEST_SUBSCRIPTIONS)}")
+
+        print("\nТестовые учётные записи:")
+
         for user_data in TEST_USERS:
-            hashed_pw = hash_password(user_data["password"])
-            user = User(
-                username=user_data["username"],
-                email=user_data["email"],
-                hashed_password=hashed_pw,
-                role=user_data["role"],
-                is_active=True,
+            print(
+                f"  {user_data['username']}: "
+                f"{user_data['password']}"
             )
-            session.add(user)
-            users.append(user)
-        
-        await session.flush()
-        print(f"   ✅ Создано {len(users)} пользователей")
-        
-        # Выводим учётные данные
-        print("\n🔑 Учётные данные пользователей:")
-        for user in users:
-            print(f"   • {user.username} / {user.email} / пароль: {TEST_USERS[user.id - 1]['password']} (роль: {user.role})")
-        
-        print("\n📺 Создание каналов...")
-        channels = []
-        for i, channel_data in enumerate(TEST_CHANNELS):
-            channel = Channel(
-                user_id=channel_data["user_id"],
-                name=channel_data["name"],
-                description=channel_data["description"],
-            )
-            session.add(channel)
-            channels.append(channel)
-        
-        await session.flush()
-        print(f"   ✅ Создано {len(channels)} каналов")
-        
-        print("\n🎬 Создание видео...")
-        videos = []
-        for video_data in TEST_VIDEOS:
-            video = Video(
-                channel_id=video_data["channel_id"],
-                title=video_data["title"],
-                description=video_data["description"],
-                privacy=video_data["privacy"],
-                duration=video_data["duration"],
-                view_count=video_data["view_count"],
-                is_published=video_data["is_published"],
-            )
-            session.add(video)
-            videos.append(video)
-        
-        await session.flush()
-        print(f"   ✅ Создано {len(videos)} видео")
-        
-        print("\n💬 Создание комментариев...")
-        comments = []
-        for comment_data in TEST_COMMENTS:
-            comment = Comment(
-                video_id=comment_data["video_id"],
-                user_id=comment_data["user_id"],
-                content=comment_data["content"],
-            )
-            session.add(comment)
-            comments.append(comment)
-        
-        await session.flush()
-        print(f"   ✅ Создано {len(comments)} комментариев")
-        
-        print("\n👍 Создание лайков...")
-        for like_data in TEST_LIKES:
-            like = Like(
-                video_id=like_data["video_id"],
-                user_id=like_data["user_id"],
-            )
-            session.add(like)
-        
-        print(f"   ✅ Создано {len(TEST_LIKES)} лайков")
-        
-        print("\n🔔 Создание подписок...")
-        for sub_data in TEST_SUBSCRIPTIONS:
-            subscription = Subscription(
-                subscribed_user_id=sub_data["subscribed_user_id"],
-                subscribed_channel_id=sub_data["subscribed_channel_id"],
-            )
-            session.add(subscription)
-        
-        print(f"   ✅ Создано {len(TEST_SUBSCRIPTIONS)} подписок")
-        
-        # Финальный commit
-        await session.commit()
-        
-        print("\n" + "=" * 60)
-        print("✅ База данных успешно заполнена!")
-        print("=" * 60)
-        print(f"\n📊 Итого создано:")
-        print(f"   • Пользователей: {len(users)}")
-        print(f"   • Каналов: {len(channels)}")
-        print(f"   • Видео: {len(videos)}")
-        print(f"   • Комментариев: {len(comments)}")
-        print(f"   • Лайков: {len(TEST_LIKES)}")
-        print(f"   • Подписок: {len(TEST_SUBSCRIPTIONS)}")
-        print("\n🌐 Приложение доступно: http://localhost:8000")
-        print("📖 API документация: http://localhost:8000/docs")
-        print("=" * 60)
-    
-    await engine.dispose()
+
+    finally:
+        if engine is not None:
+            await engine.dispose()
 
 
 if __name__ == "__main__":
     try:
         asyncio.run(seed_database())
-    except Exception as e:
-        print(f"\n❌ Ошибка: {e}")
-        print("\n📋 Возможные причины:")
-        print("   1. PostgreSQL не запущен (docker compose up -d)")
-        print("   2. Миграции не применены (alembic upgrade head)")
-        print("   3. Неверные настройки в .env")
+
+    except IntegrityError as error:
+        print("\n❌ Нарушено ограничение базы данных.")
+        print(f"Подробности: {error.orig}")
+        sys.exit(1)
+
+    except Exception as error:
+        print(f"\n❌ Ошибка заполнения базы данных: {error}")
+
+        print("\nВозможные причины:")
+        print("  1. PostgreSQL не запущен.")
+        print("  2. Миграции Alembic не применены.")
+        print("  3. Неверные настройки подключения в .env.")
+        print("  4. Целевые таблицы уже содержат данные.")
+
         sys.exit(1)

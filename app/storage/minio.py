@@ -29,17 +29,14 @@ class MinIOStorage(BaseStorage):
         settings = get_settings()
         
         self.client = client or Minio(
-            os.getenv("MINIO_HOST", "localhost"),
+            settings.minio_host,
             access_key=os.getenv("MINIO_ROOT_USER", "minioadmin"),
             secret_key=os.getenv("MINIO_ROOT_PASSWORD", "minioadmin"),
             secure=os.getenv("MINIO_SECURE", "false").lower() == "true",
         )
         
         self.bucket = bucket or os.getenv("MINIO_BUCKET", "videos")
-        self.public_url = os.getenv(
-            "MINIO_PUBLIC_URL",
-            "http://localhost:9000",
-        )
+        self.public_url = settings.minio_public_url
     
     async def upload(
         self,

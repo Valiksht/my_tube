@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
 
     # CORS
-    cors_origins: str = "http://localhost:3000,http://127.0.0.1:8000,http://localhost:8000"
+    cors_origins: str = "http://localhost:3000,http://127.0.0.1:8000,http://localhost:8000,http://localhost:80"
 
     # Сессии
     session_cookie: str = "session"
@@ -50,6 +50,12 @@ class Settings(BaseSettings):
 
     # CSRF
     csrf_secret_key: str = "change-this-csrf-secret-key-in-production"
+
+    # Storage
+    storage_type: str = "minio"  # minio или filesystem
+    storage_dir: str = "/app/storage"
+    minio_host: str = "localhost"
+    minio_public_url: str = "http://localhost:9000"
 
     @property
     def cors_origins_list(self) -> list[str]:

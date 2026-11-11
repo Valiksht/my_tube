@@ -3,6 +3,7 @@
 Получение сессии БД, текущего пользователя, проверка ролей.
 """
 
+from datetime import datetime, timezone
 from typing import AsyncGenerator, Optional
 
 from fastapi import Depends, HTTPException, Request, status
@@ -17,6 +18,7 @@ from app.models.users import User
 from app.models.session import UserSession
 from app.core.config import get_settings
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 
 async def get_current_user(
@@ -45,19 +47,20 @@ async def get_current_user(
     
     query = (
         select(UserSession)
+        .options(
+            selectinload(UserSession.user).selectinload(User.channel),
+        )
         .where(
             UserSession.session_id == session_id,
-            UserSession.is_active == "1",
-            UserSession.expires_at > __import__("datetime").datetime.now(
-                __import__("datetime").timezone.utc
-            ),
+            UserSession.is_active.is_(True),
+            UserSession.expires_at > datetime.now(timezone.utc),
         )
     )
     result = await db.execute(query)
     session = result.scalar_one_or_none()
     
     if not session:
-        raise AuthenticationRequiredException("Session expired or invalid")
+        raise AuthenticationRequiredException()
     
     return session.user
 
@@ -86,12 +89,13 @@ async def get_optional_user(
     
     query = (
         select(UserSession)
+        .options(
+            selectinload(UserSession.user).selectinload(User.channel),
+        )
         .where(
             UserSession.session_id == session_id,
-            UserSession.is_active == "1",
-            UserSession.expires_at > __import__("datetime").datetime.now(
-                __import__("datetime").timezone.utc
-            ),
+            UserSession.is_active.is_(True),
+            UserSession.expires_at > datetime.now(timezone.utc),
         )
     )
     result = await db.execute(query)

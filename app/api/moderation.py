@@ -3,7 +3,10 @@
 Жалобы, скрытие видео/комментариев, панель модератора.
 """
 
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.dependencies import get_db
@@ -13,6 +16,42 @@ from app.schemas.video import VideoResponse
 from app.schemas.comment import CommentResponse
 
 router = APIRouter(prefix="/moderation", tags=["moderation"])
+
+
+class ReportCreate(BaseModel):
+    """Схема для создания жалобы."""
+    target_type: str = Field(..., description="'video' или 'comment'")
+    target_id: int = Field(..., description="ID объекта")
+    reason: str = Field(..., min_length=10, description="Причина жалобы")
+
+
+@router.post("/reports", status_code=status.HTTP_201_CREATED)
+async def create_report(
+    report_data: ReportCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Создать жалобу от пользователя."""
+    from app.services.moderation import ModerationService
+    
+    if report_data.target_type not in ["video", "comment"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="target_type must be 'video' or 'comment'",
+        )
+    
+    service = ModerationService(db)
+    report = await service.create_report(
+        reporter_id=current_user.id,
+        target_type=report_data.target_type,
+        target_id=report_data.target_id,
+        reason=report_data.reason,
+    )
+    
+    return {
+        "id": report.id,
+        "status": report.status,
+    }
 
 
 @router.get("/reports/pending")
@@ -42,11 +81,16 @@ async def list_pending_reports(
     ]
 
 
+class ReportResolve(BaseModel):
+    """Схема для решения жалобы."""
+    notes: str = ""
+
+
 @router.post("/reports/{report_id}/resolve")
 async def resolve_report(
     report_id: int,
     action: str = Query(..., description="'resolved' или 'rejected'"),
-    notes: str = "",
+    resolve_data: ReportResolve = None,
     current_user: User = Depends(require_moderator_or_admin()),
     db: AsyncSession = Depends(get_db),
 ):
@@ -58,6 +102,8 @@ async def resolve_report(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Action must be 'resolved' or 'rejected'",
         )
+    
+    notes = resolve_data.notes if resolve_data else ""
     
     service = ModerationService(db)
     report = await service.resolve_report(

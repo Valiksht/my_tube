@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import BinaryIO
 
 from app.storage.base import BaseStorage
+from app.core.config import get_settings
 
 
 class FileStorage(BaseStorage):
@@ -19,7 +20,8 @@ class FileStorage(BaseStorage):
     """
     
     def __init__(self, storage_dir: str | None = None):
-        self.storage_dir = Path(storage_dir or os.getenv("STORAGE_DIR", "/app/storage"))
+        settings = get_settings()
+        self.storage_dir = Path(storage_dir or settings.storage_dir)
         self.storage_dir.mkdir(parents=True, exist_ok=True)
         self.base_url = os.getenv("STORAGE_BASE_URL", "http://localhost:8000/static/storage")
     

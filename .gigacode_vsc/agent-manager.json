@@ -1,9 +1,20 @@
 {
-  "worktrees": {},
+  "worktrees": {
+    "wt-1794435871800-1": {
+      "branch": "miniature-angora",
+      "path": "d:\\IT\\New_dev\\my_tube_2\\.gigacode_vsc\\worktrees\\miniature-angora",
+      "parentBranch": "main",
+      "createdAt": "2026-11-11T22:24:31.800Z",
+      "remote": "origin"
+    }
+  },
   "sessions": {},
   "tabOrder": {
     "local": [
       "pending:1"
     ]
-  }
+  },
+  "worktreeOrder": [
+    "wt-1794435871800-1"
+  ]
 }
