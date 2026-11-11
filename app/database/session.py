@@ -2,9 +2,41 @@
 
 from contextlib import asynccontextmanager
 
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncSession,
+    create_async_engine,
+    async_sessionmaker,
+)
 
 from app.core.config import get_settings
+
+# Глобальный кэш движка
+_engine_cache: dict[str, object] = {}
+
+
+def _get_engine():
+    """Получить или создать движок с кэшированием."""
+    settings = get_settings()
+    key = settings.database_url
+    
+    if key not in _engine_cache:
+        _engine_cache[key] = create_async_engine(
+            settings.database_url,
+            echo=settings.debug,
+            pool_size=5,
+            max_overflow=10,
+            pool_pre_ping=True,
+        )
+    
+    return _engine_cache[key]
+
+
+# Создаём maker для сессий
+_session_maker = async_sessionmaker(
+    bind=None,  # Будет установлено в get_async_session
+    class_=AsyncSession,
+    expire_on_commit=False,
+)
 
 
 @asynccontextmanager
@@ -25,15 +57,14 @@ async def get_async_session():
     
     Автоматически обрабатывает commit и rollback.
     """
-    settings = get_settings()
+    engine = _get_engine()
+    session = _session_maker(bind=engine)
     
-    engine = create_async_engine(
-        settings.database_url,
-        echo=settings.debug,
-        pool_size=5,
-        max_overflow=10,
-        pool_pre_ping=True,
-    )
-    
-    async with engine() as session:
+    try:
         yield session
+        await session.commit()
+    except Exception:
+        await session.rollback()
+        raise
+    finally:
+        await session.close()

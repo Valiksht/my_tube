@@ -63,7 +63,14 @@ class BaseRepository(Generic[ModelType]):
         Returns:
             Список записей.
         """
-        query = select(self.model).where(**kwargs).offset(skip).limit(limit)
+        conditions = [
+            getattr(self.model, key) == value
+            for key, value in kwargs.items()
+        ]
+        query = select(self.model)
+        if conditions:
+            query = query.where(*conditions)
+        query = query.offset(skip).limit(limit)
         result = await db.execute(query)
         return result.scalars().all()
     
@@ -134,6 +141,12 @@ class BaseRepository(Generic[ModelType]):
         Returns:
             Первая найденная запись или None.
         """
-        query = select(self.model).where(**kwargs)
+        conditions = [
+            getattr(self.model, key) == value
+            for key, value in kwargs.items()
+        ]
+        query = select(self.model)
+        if conditions:
+            query = query.where(*conditions)
         result = await db.execute(query)
         return result.scalar_one_or_none()

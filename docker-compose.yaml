@@ -22,7 +22,7 @@ services:
       - mytube_network
 
   minio:
-    image: minio/minio:latest
+    image: dockerhub.timeweb.cloud/bitnamilegacy/minio:latest
     container_name: mytube_minio
     environment:
       - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
@@ -42,7 +42,7 @@ services:
       - mytube_network
 
   minio-init:
-    image: minio/mc:latest
+    image: dockerhub.timeweb.cloud/bitnamilegacy/minio-client:latest
     container_name: mytube_minio_init
     depends_on:
       minio:

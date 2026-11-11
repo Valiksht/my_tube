@@ -18,6 +18,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
+from app.core.config import get_settings
 from app.core.security import hash_password
 from app.models.users import User
 from app.models.channel import Channel
@@ -28,8 +29,9 @@ from app.models.subscription import Subscription
 from app.models.enum import UserRole, VideoPrivacy
 
 
-# URL базы данных
-DATABASE_URL = "postgresql+asyncpg://postgres:postgres@localhost:5432/mytube_db"
+# Получаем DATABASE_URL из общей конфигурации приложения
+_settings = get_settings()
+DATABASE_URL = _settings.database_url
 
 # Тестовые данные
 TEST_USERS = [

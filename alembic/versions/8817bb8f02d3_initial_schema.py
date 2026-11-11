@@ -184,12 +184,53 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Downgrade schema."""
+    # hidden_content
+    op.drop_index(op.f('ix_hidden_content_id'), table_name='hidden_content')
     op.drop_table('hidden_content')
+
+    # reports
+    op.drop_index(op.f('ix_reports_reporter_id'), table_name='reports')
+    op.drop_index(op.f('ix_reports_id'), table_name='reports')
     op.drop_table('reports')
+
+    # subscriptions
+    op.drop_index(op.f('ix_subscriptions_subscribed_channel_id'), table_name='subscriptions')
+    op.drop_index(op.f('ix_subscriptions_subscribed_user_id'), table_name='subscriptions')
+    op.drop_index(op.f('ix_subscriptions_id'), table_name='subscriptions')
     op.drop_table('subscriptions')
+
+    # likes
+    op.drop_index(op.f('ix_likes_user_id'), table_name='likes')
+    op.drop_index(op.f('ix_likes_video_id'), table_name='likes')
+    op.drop_index(op.f('ix_likes_id'), table_name='likes')
     op.drop_table('likes')
+
+    # comments
+    op.drop_index(op.f('ix_comments_user_id'), table_name='comments')
+    op.drop_index(op.f('ix_comments_video_id'), table_name='comments')
+    op.drop_index(op.f('ix_comments_id'), table_name='comments')
     op.drop_table('comments')
+
+    # user_sessions
+    op.drop_index(op.f('ix_user_sessions_user_id'), table_name='user_sessions')
+    op.drop_index(op.f('ix_user_sessions_session_id'), table_name='user_sessions')
+    op.drop_index(op.f('ix_user_sessions_id'), table_name='user_sessions')
     op.drop_table('user_sessions')
+
+    # videos
+    op.drop_index(op.f('ix_videos_channel_id'), table_name='videos')
+    op.drop_index(op.f('ix_videos_id'), table_name='videos')
     op.drop_table('videos')
+
+    # channels
+    op.drop_index(op.f('ix_channels_user_id'), table_name='channels')
+    op.drop_index(op.f('ix_channels_name'), table_name='channels')
+    op.drop_index(op.f('ix_channels_id'), table_name='channels')
     op.drop_table('channels')
+
+    # users
+    op.drop_index(op.f('ix_users_role'), table_name='users')
+    op.drop_index(op.f('ix_users_email'), table_name='users')
+    op.drop_index(op.f('ix_users_username'), table_name='users')
+    op.drop_index(op.f('ix_users_id'), table_name='users')
     op.drop_table('users')
