@@ -13,10 +13,26 @@ from app.core.config import get_settings
 
 # Отключить кэш Jinja2 для тестов.
 # LRU cache не может хешировать контекст с request (unhashable type: 'dict').
-# Заменяем Jinja2Templates на новый без кэша.
+# Создаём кастомный класс шаблонов без кэширования.
+from jinja2 import Environment, FileSystemLoader
 from starlette.templating import Jinja2Templates
-import app.main as main_module
-main_module.templates = Jinja2Templates(directory="app/templates")
+from app.main import app
+
+# Создаём Environment без кэша
+jinja_env = Environment(loader=FileSystemLoader("app/templates"), cache_size=0)
+
+# Кастомный класс шаблонов, который никогда не использует кэш
+class NoCacheJinja2Templates(Jinja2Templates):
+    def get_template(self, name, *args, **kwargs):
+        """Загрузка шаблона без кэша — пропускаем cache lookup."""
+        # Debug: print what we receive
+        import sys
+        print(f"DEBUG get_template: name={name!r} type={type(name).__name__} args={args!r} kwargs={kwargs!r}", file=sys.stderr)
+        # Пропускаем cache lookup, вызываем loader.load напрямую
+        return self.env.loader.load(self.env, name, self.env.make_globals(kwargs.get("globals")))
+
+# Заменяем templates на экземпляре app напрямую
+app.templates = NoCacheJinja2Templates(env=jinja_env)
 
 # Тестовая база данных
 TEST_DATABASE_URL = "postgresql+asyncpg://postgres:postgres@localhost/mytube_db_test"
@@ -52,16 +68,21 @@ async def client(db_session):
     """Тестовый клиент FastAPI."""
     async def override_get_db():
         yield db_session
-    
+
     app.dependency_overrides[get_db] = override_get_db
-    
+
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://test",
     ) as ac:
         yield ac
-    
+
     app.dependency_overrides.clear()
+    # Откатить сессию после теста, чтобы избежать PendingRollbackError
+    try:
+        await db_session.rollback()
+    except Exception:
+        pass
 
 
 @pytest.fixture
@@ -130,3 +151,26 @@ async def test_video(db_session, test_channel):
     await db_session.refresh(video)
     
     return video
+
+
+@pytest.fixture
+async def moderator_user(db_session):
+    """Тестовый модератор."""
+    from app.core.security import hash_password
+    from app.models.users import User
+    from datetime import datetime, timezone
+
+    user = User(
+        username="moderator",
+        email="mod@example.com",
+        hashed_password=hash_password("testpass123"),
+        is_active=True,
+        role="moderator",
+        created_at=datetime.now(timezone.utc),
+    )
+
+    db_session.add(user)
+    await db_session.flush()
+    await db_session.refresh(user)
+
+    return user

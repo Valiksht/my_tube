@@ -21,6 +21,49 @@ services:
       - mytube_network
     restart: unless-stopped
 
+  minio:
+    image: dockerhub.timeweb.cloud/bitnamilegacy/minio:latest
+    container_name: mytube_minio_local
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+      - MINIO_DEFAULT_BUCKETS=videos
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    networks:
+      - mytube_network
+    restart: unless-stopped
+
+  minio-init:
+    image: dockerhub.timeweb.cloud/bitnamilegacy/minio-client:latest
+    container_name: mytube_minio_init_local
+    environment:
+      - MINIO_SERVER_HOST=minio
+      - MINIO_SERVER_PORT_NUMBER=9000
+      - MINIO_SERVER_SCHEME=http
+      - MINIO_SERVER_ROOT_USER=minioadmin
+      - MINIO_SERVER_ROOT_PASSWORD=minioadmin
+    depends_on:
+      minio:
+        condition: service_healthy
+    command:
+      - /opt/bitnami/scripts/minio-client/run.sh
+      - mb
+      - --ignore-existing
+      - minio/videos
+    networks:
+      - mytube_network
+    restart: "no"
+
   api:
     build:
       context: .
@@ -39,8 +82,15 @@ services:
       - SESSION_COOKIE=session
       - SESSION_MAX_AGE=86400
       - SESSION_TOKEN_EXPIRE_DAYS=7
-      - STORAGE_TYPE=filesystem
+      - STORAGE_TYPE=minio
       - STORAGE_DIR=/app/storage
+      - MINIO_HOST=minio
+      - MINIO_PORT=9000
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+      - MINIO_BUCKET=videos
+      - MINIO_PUBLIC_URL=http://localhost:9000
+      - MINIO_SECURE=false
     ports:
       - "${API_PORT:-8000}:8000"
     volumes:
@@ -48,12 +98,15 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
     networks:
       - mytube_network
     restart: unless-stopped
 
 volumes:
   postgres_data:
+  minio_data:
   storage_data:
 
 networks:

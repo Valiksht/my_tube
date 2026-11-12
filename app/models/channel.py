@@ -76,6 +76,3 @@ class Channel(Base):
         lazy="selectin"
     )
 
-
-__all__ = ["Channel"]
-"""Модель видеоканала."""

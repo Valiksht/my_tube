@@ -72,14 +72,12 @@ class CommentService:
         self,
         comment: Comment,
         current_user,
-        is_moderator=False,
     ) -> None:
         """Удалить комментарий.
         
         Args:
             comment: Комментарий для удаления.
             current_user: Текущий пользователь.
-            is_moderator: Флаг модератора.
             
         Raises:
             PermissionError: Если нет прав.
@@ -88,11 +86,9 @@ class CommentService:
             current_user
             and comment.user_id == current_user.id
         )
-        
-        if not is_owner and not is_moderator:
+
+        if not is_owner:
             raise PermissionError("Not enough permissions")
-        
+
         await comment_repo.remove(self.db, comment)
 
-
-comment_service = CommentService(None)  # type: ignore[arg-type]

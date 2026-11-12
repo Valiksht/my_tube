@@ -33,7 +33,6 @@ def _get_engine():
 
 # Создаём maker для сессий
 _session_maker = async_sessionmaker(
-    bind=None,  # Будет установлено в get_async_session
     class_=AsyncSession,
     expire_on_commit=False,
 )

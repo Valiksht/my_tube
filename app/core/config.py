@@ -55,7 +55,13 @@ class Settings(BaseSettings):
     storage_type: str = "minio"  # minio или filesystem
     storage_dir: str = "/app/storage"
     minio_host: str = "localhost"
+    minio_port: int = 9000
     minio_public_url: str = "http://localhost:9000"
+
+    @property
+    def minio_endpoint(self) -> str:
+        """Получить полный endpoint MinIO с портом."""
+        return f"{self.minio_host}:{self.minio_port}"
 
     @property
     def cors_origins_list(self) -> list[str]:
@@ -66,7 +72,7 @@ class Settings(BaseSettings):
     @classmethod
     def validate_secret_key(cls, v: str) -> str:
         """Предупреждение о слабом секрете в dev-режиме."""
-        if v == "change-this-secret-key-in-production-12345" and not cls.model_config.get("env_file"):
+        if v == "change-this-secret-key-in-production-12345":
             import warnings
             warnings.warn(
                 "Используется секретный ключ по умолчанию! "

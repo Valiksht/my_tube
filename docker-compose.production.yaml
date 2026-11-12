@@ -101,6 +101,7 @@ services:
     container_name: mytube_api
     environment:
       - DEBUG=False
+      - POSTGRES_HOST=postgres
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
       - POSTGRES_DB=${POSTGRES_DB:-mytube_db}
@@ -118,16 +119,12 @@ services:
       - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
       - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin}
       - MINIO_BUCKET=${MINIO_BUCKET:-videos}
+      - MINIO_HOST=minio
       - MINIO_PUBLIC_URL=http://localhost:9000
     ports:
       - "${API_PORT:-8000}:8000"
     volumes:
       - storage_data:/app/storage
-    command: >
-      sh -c "
-      alembic upgrade head &&
-      uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
-      "
     depends_on:
       postgres:
         condition: service_healthy

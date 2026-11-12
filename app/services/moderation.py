@@ -222,5 +222,3 @@ class ModerationService:
         await self.db.delete(hidden)
         await self.db.flush()
 
-
-moderation_service = ModerationService(None)  # type: ignore[arg-type]

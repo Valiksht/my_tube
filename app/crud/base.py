@@ -23,16 +23,16 @@ class BaseRepository(Generic[ModelType]):
         self.model = model
     
     async def get_by_id(
-        self, 
-        id: int, 
+        self,
         db: AsyncSession,
+        id: int,
         **kwargs: Any,
     ) -> ModelType | None:
         """Получить запись по ID.
         
         Args:
-            id: Первичный ключ.
             db: AsyncSession.
+            id: Первичный ключ.
             **kwargs: Дополнительные условия фильтрации.
             
         Returns:
@@ -47,16 +47,16 @@ class BaseRepository(Generic[ModelType]):
     
     async def get_by_id_with(
         self,
-        id: int,
         db: AsyncSession,
+        id: int,
         *eager_load,
         **kwargs: Any,
     ) -> ModelType | None:
         """Получить запись по ID с жадной загрузкой отношений.
         
         Args:
-            id: Первичный ключ.
             db: AsyncSession.
+            id: Первичный ключ.
             *eager_load: SQLAlchemy load options (selectinload, joinedload).
             **kwargs: Дополнительные условия фильтрации.
             

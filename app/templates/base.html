@@ -21,6 +21,7 @@
                     {% if current_user %}
                         <a href="/upload" class="nav-link">Загрузить</a>
                         <a href="/profile/{{ current_user.id }}" class="nav-link">Профиль</a>
+                        <a href="/my-subscriptions" class="nav-link">Подписки</a>
                         <span class="user-info">{{ current_user.username }}</span>
                         {% if current_user.role in ['moderator', 'admin'] %}
                             <a href="/moderation" class="nav-link">Модерация</a>

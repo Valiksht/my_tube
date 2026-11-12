@@ -90,7 +90,7 @@ class ReportResolve(BaseModel):
 async def resolve_report(
     report_id: int,
     action: str = Query(..., description="'resolved' или 'rejected'"),
-    resolve_data: ReportResolve = None,
+    resolve_data: ReportResolve | None = None,
     current_user: User = Depends(require_moderator_or_admin()),
     db: AsyncSession = Depends(get_db),
 ):

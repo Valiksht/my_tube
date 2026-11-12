@@ -3,7 +3,7 @@
 Загрузка, просмотр, обновление, удаление видео.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile, File
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, status, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.dependencies import get_db
@@ -102,11 +102,11 @@ async def create_video(
     status_code=status.HTTP_201_CREATED,
 )
 async def upload_video(
-    title: str = ...,
-    description: str = "",
-    privacy: str = "public",
-    video_file: UploadFile = None,
-    thumbnail_file: UploadFile = None,
+    title: str = Form(...),
+    description: str = Form(""),
+    privacy: str = Form("public"),
+    video_file: UploadFile | None = None,
+    thumbnail_file: UploadFile | None = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -176,10 +176,11 @@ async def upload_video(
             video,
             video_file.file,
             content_type=video_file.content_type or "video/mp4",
+            size=file_size,
         )
     
     # Загружаем превью
-    if thumbnail_file:
+    if thumbnail_file and thumbnail_file.filename:
         allowed_thumb_types = ["image/jpeg", "image/png", "image/webp"]
         if thumbnail_file.content_type not in allowed_thumb_types:
             raise HTTPException(
@@ -294,26 +295,21 @@ async def delete_comment(
     comment_id: int,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    is_moderator: bool = False,
 ):
     """Удалить комментарий."""
     service = CommentService(db)
-    
+
     from app.models.comment import Comment
     from sqlalchemy import select
-    
+
     query = select(Comment).where(Comment.id == comment_id)
     result = await db.execute(query)
     comment = result.scalar_one_or_none()
-    
+
     if not comment:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Comment not found",
         )
-    
-    await service.delete_comment(
-        comment,
-        current_user,
-        is_moderator=is_moderator,
-    )
+
+    await service.delete_comment(comment, current_user)

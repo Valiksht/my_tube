@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Мои подписки — YouTube Clone{% endblock %}
+
+{% block content %}
+<div class="subscriptions-page">
+    <h1>Мои подписки</h1>
+
+    {% if channels %}
+    <div class="subscriptions-list">
+        {% for channel in channels %}
+        <div class="subscription-channel-card">
+            <div class="subscription-channel-info">
+                <a href="/channel/{{ channel.id }}" class="subscription-channel-name">
+                    {{ channel.name }}
+                </a>
+                {% if channel.description %}
+                <p class="subscription-channel-description">{{ channel.description }}</p>
+                {% endif %}
+                <p class="subscription-channel-meta">
+                    {{ channel.subscribers|length }} подписчиков
+                </p>
+            </div>
+            <form action="/api/channels/{{ channel.id }}/subscriptions" method="POST" class="subscription-unsubscribe-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="btn btn-secondary subscribe-btn active">
+                    Отписаться
+                </button>
+            </form>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>Вы пока не подписаны ни на один канал.</p>
+        <a href="/" class="btn btn-primary">Смотреть видео</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

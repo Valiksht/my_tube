@@ -59,7 +59,3 @@ class Subscription(Base):
     __table_args__ = (
         UniqueConstraint("subscribed_user_id", "subscribed_channel_id", name="uq_user_channel_subscription"),
     )
-
-
-__all__ = ["Subscription"]
-"""Модель подписок."""

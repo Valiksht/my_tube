@@ -55,7 +55,3 @@ class Like(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "video_id", name="uq_user_video_likes"),
     )
-
-
-__all__ = ["Like"]
-"""Модель лайков."""

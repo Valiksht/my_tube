@@ -83,5 +83,3 @@ class LikeService:
         result = await self.db.execute(query)
         return result.scalar() or 0
 
-
-like_service = LikeService(None)  # type: ignore[arg-type]

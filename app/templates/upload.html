@@ -14,6 +14,20 @@
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         
         <div class="form-group">
+            <label for="channel_id">Канал *</label>
+            <select id="channel_id" name="channel_id" required>
+                {% if current_user.channel %}
+                <option value="{{ current_user.channel.id }}">{{ current_user.channel.name }}</option>
+                {% else %}
+                <option value="" disabled>Сначала создайте канал</option>
+                {% endif %}
+            </select>
+            {% if not current_user.channel %}
+            <small style="color: #dc2626;">У вас пока нет канала. <a href="/channel/create">Создать канал</a></small>
+            {% endif %}
+        </div>
+        
+        <div class="form-group">
             <label for="title">Название видео *</label>
             <input type="text" id="title" name="title" required 
                    placeholder="Введите название видео" maxlength="200" autofocus>

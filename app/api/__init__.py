@@ -1,6 +1,7 @@
 """API модуль приложения.
 
-Подключает все роутеры к главному приложению.
+Подключает все API-роутеры к главному приложению.
+HTML-роутеры подключаются отдельно без префикса /api.
 """
 
 from fastapi import APIRouter
@@ -14,7 +15,7 @@ from app.api.moderation import router as moderation_router
 
 router = APIRouter()
 
-# Подключаем все роутеры
+# Подключаем только API-роутеры
 router.include_router(auth_router)
 router.include_router(videos_router)
 router.include_router(likes_router)
@@ -22,5 +23,7 @@ router.include_router(subscriptions_router)
 router.include_router(channels_router)
 router.include_router(moderation_router)
 
+# HTML-роутеры экспортируются отдельно
+from app.api.pages import pages_router  # noqa: E402
 
-__all__ = ["router"]
+__all__ = ["router", "pages_router"]

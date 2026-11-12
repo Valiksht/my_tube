@@ -49,7 +49,3 @@ class Comment(Base):
     user: Mapped["User"] = relationship(
         "User", back_populates="comments"
     )
-
-
-__all__ = ["Comment"]
-"""Модель комментариев."""

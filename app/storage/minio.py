@@ -3,6 +3,7 @@
 Использует minio Python SDK для работы с S3-совместимым хранилищем.
 """
 
+import json
 import os
 import uuid
 from typing import BinaryIO
@@ -29,7 +30,7 @@ class MinIOStorage(BaseStorage):
         settings = get_settings()
         
         self.client = client or Minio(
-            settings.minio_host,
+            settings.minio_endpoint,
             access_key=os.getenv("MINIO_ROOT_USER", "minioadmin"),
             secret_key=os.getenv("MINIO_ROOT_PASSWORD", "minioadmin"),
             secure=os.getenv("MINIO_SECURE", "false").lower() == "true",
@@ -59,22 +60,25 @@ class MinIOStorage(BaseStorage):
         if not object_name:
             object_name = self._generate_object_name(content_type)
         
-        # Проверяем существование бакета
+        # Проверяем существование бакета и создаём при необходимости
         if not self.client.bucket_exists(self.bucket):
             self.client.make_bucket(self.bucket)
-            # Устанавливаем публичный доступ для бакета
-            policy = {
-                "Version": "2012-10-17",
-                "Statement": [
-                    {
-                        "Effect": "Allow",
-                        "Principal": {"AWS": "*"},
-                        "Action": ["s3:GetObject"],
-                        "Resource": [f"arn:aws:s3:::{self.bucket}/*"],
-                    }
-                ],
-            }
-            # self.client.set_bucket_policy(self.bucket, json.dumps(policy))
+        
+        # Устанавливаем публичный доступ для бакета
+        # Всегда применяем политику — бакет мог быть создан minio-init
+        # без публьного доступа
+        policy = {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {"AWS": "*"},
+                    "Action": ["s3:GetObject"],
+                    "Resource": [f"arn:aws:s3:::{self.bucket}/*"],
+                }
+            ],
+        }
+        self.client.set_bucket_policy(self.bucket, json.dumps(policy))
         
         # Загружаем файл
         self.client.put_object(

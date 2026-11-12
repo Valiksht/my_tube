@@ -4,7 +4,7 @@
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.dependencies import get_db
@@ -134,12 +134,12 @@ async def logout(
     
     session_id = request.cookies.get(settings.session_cookie)
     if not session_id:
-        return JSONResponse(status_code=status.HTTP_204_NO_CONTENT)
-    
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
     service = AuthService(db)
     await service.logout(session_id)
-    
-    response = JSONResponse(status_code=status.HTTP_204_NO_CONTENT)
+
+    response = Response(status_code=status.HTTP_204_NO_CONTENT)
     response.delete_cookie(
         key=settings.session_cookie,
         path="/",

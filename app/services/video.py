@@ -73,6 +73,7 @@ class VideoService:
         video: Video,
         file,
         content_type: str = "video/mp4",
+        size: int = 0,
     ) -> Video:
         """Загрузить видео файл в хранилище.
         
@@ -80,6 +81,7 @@ class VideoService:
             video: Видео объект.
             file: Файловый объект.
             content_type: MIME тип файла.
+            size: Размер файла в байтах.
             
         Returns:
             Обновлённый видео объект.
@@ -95,6 +97,7 @@ class VideoService:
             file=file,
             object_name=object_name,
             content_type=content_type,
+            size=size,
         )
         
         # Обновляем видео в БД
@@ -153,7 +156,7 @@ class VideoService:
         video = await video_repo.get_by_id_with(
             self.db,
             video_id,
-            selectinload(Video.channel),
+            selectinload(Video.channel).selectinload(Channel.user),
         )
         if not video:
             return None

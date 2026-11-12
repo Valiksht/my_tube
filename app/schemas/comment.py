@@ -14,7 +14,7 @@ class CommentBase(BaseModel):
 class CommentCreate(CommentBase):
     """Схема для создания комментария."""
     
-    video_id: int = Field(..., description="ID видео")
+    pass
 
 
 class CommentResponse(CommentBase):

@@ -90,6 +90,3 @@ class User(Base):
         foreign_keys="UserSession.user_id",
     )
 
-
-__all__ = ["User"]
-"""Модель пользователя."""

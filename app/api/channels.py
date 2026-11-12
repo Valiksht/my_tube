@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database.dependencies import get_db
 from app.dependencies import get_current_user, require_role
 from app.schemas.channel import ChannelCreate, ChannelUpdate, ChannelResponse
-from app.schemas.user import UserResponse
+from app.schemas.user import UserResponse, UserUpdate
 from app.services.video import VideoService
 from app.models.channel import Channel
 from app.models.users import User
@@ -136,24 +136,6 @@ async def get_channel_videos(
 # ==================== Пользователи ====================
 
 
-@router.get("/users/{user_id}", response_model=UserResponse)
-async def get_user(
-    user_id: int,
-    db: AsyncSession = Depends(get_db),
-):
-    """Получить пользователя по ID."""
-    from app.crud.user import user_repo
-    
-    user = await user_repo.get_by_id(db, user_id)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found",
-        )
-    
-    return user
-
-
 @router.get("/users/me", response_model=UserResponse)
 async def get_me(
     current_user: User = Depends(get_current_user),
@@ -164,20 +146,37 @@ async def get_me(
 
 @router.patch("/users/me", response_model=UserResponse)
 async def update_me(
-    data: dict,
+    data: UserUpdate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Обновить данные текущего пользователя."""
     from app.crud.user import user_repo
-    
-    allowed_fields = {"username", "email"}
-    update_data = {k: v for k, v in data.items() if k in allowed_fields}
-    
-    if "password" in data:
+
+    update_data = data.model_dump(exclude_unset=True)
+
+    if "password" in data.model_fields_set:
         from app.core.security import hash_password
-        update_data["hashed_password"] = hash_password(data["password"])
-    
+        update_data["hashed_password"] = hash_password(data.password)  # type: ignore[union-attr]
+
     user = await user_repo.update(db, current_user, update_data)
-    
+
+    return user
+
+
+@router.get("/users/{user_id}", response_model=UserResponse)
+async def get_user(
+    user_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """Получить пользователя по ID."""
+    from app.crud.user import user_repo
+
+    user = await user_repo.get_by_id(db, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
     return user

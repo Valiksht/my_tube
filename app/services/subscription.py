@@ -114,5 +114,3 @@ class SubscriptionService:
         result = await self.db.execute(query)
         return result.scalar() or 0
 
-
-subscription_service = SubscriptionService(None)  # type: ignore[arg-type]
