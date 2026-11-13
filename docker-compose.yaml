@@ -1,100 +1,71 @@
+
 services:
   postgres:
-    image: postgres:15-alpine
+    image: postgres:16-alpine
     container_name: mytube_postgres
     environment:
-      - POSTGRES_USER=${POSTGRES_USER:-postgres}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
-      - POSTGRES_DB=${POSTGRES_DB:-mytube_db}
-      - PGDATA=/var/lib/postgresql/data/pgdata
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-mytube_db}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-mytube_db}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    networks:
-      - mytube_network
-    restart: unless-stopped
-
-  garage:
-    build:
-      context: .
-      dockerfile: Dockerfile.garage
-    container_name: mytube_garage_local
-    ports:
-      - "3900:3900"  # S3 API
-      - "3901:3901"  # RPC (inter-cluster)
-      - "3902:3902"  # Web UI (s3_web)
-      - "3903:3903"  # Admin API
-    environment:
-      - GARAGE_DEFAULT_BUCKET=videos
-      - GARAGE_DEFAULT_KEY_NAME=mytube-key
-    volumes:
-      - garage_meta:/var/lib/garage/meta
-      - garage_data:/var/lib/garage/data
-      - garage_credentials:/credentials
-    networks:
-      - mytube_network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "nc -z localhost 3900 || exit 1"]
-      interval: 10s
+      test:
+        - CMD-SHELL
+        - pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"
+      interval: 5s
       timeout: 5s
       retries: 10
-      start_period: 60s
+      start_period: 10s
+    restart: unless-stopped
 
   api:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: mytube_api_local
+    container_name: mytube_api
     environment:
-      - DEBUG=True
-      - POSTGRES_USER=${POSTGRES_USER:-postgres}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
-      - POSTGRES_DB=${POSTGRES_DB:-mytube_db}
-      - POSTGRES_PORT=5432
-      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-mytube_db}
-      - SECRET_KEY=${SECRET_KEY:-change-this-secret-key-in-production-12345}
-      - CSRF_SECRET_KEY=${CSRF_SECRET_KEY:-change-this-csrf-secret-key-in-production}
-      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:8000,http://localhost:8000,http://localhost:80}
-      - SESSION_COOKIE=session
-      - SESSION_MAX_AGE=86400
-      - SESSION_TOKEN_EXPIRE_DAYS=7
-      - STORAGE_TYPE=garage
-      - STORAGE_DIR=/app/storage
-      - GARAGE_HOST=garage
-      - GARAGE_S3_PORT=3900
-      - GARAGE_S3_REGION=garage
-      - GARAGE_BUCKET=${GARAGE_BUCKET:-videos}
-      - GARAGE_S3_PUBLIC_URL=http://localhost:3900
-      - GARAGE_S3_SECURE=false
+      DEBUG: "false"
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-mytube_db}
+
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-mytube_db}
+
+      SECRET_KEY: ${SECRET_KEY:-dev-only-change-this-key}
+      CSRF_SECRET_KEY: ${CSRF_SECRET_KEY:-dev-only-change-this-csrf-key}
+
+      STORAGE_TYPE: filesystem
+      STORAGE_DIR: /app/storage
+      STORAGE_BASE_URL: http://localhost:8000/storage
+
+      CORS_ORIGINS: http://localhost:8000,http://127.0.0.1:8000
+
     ports:
       - "${API_PORT:-8000}:8000"
+
     volumes:
       - storage_data:/app/storage
-      - garage_credentials:/garage_credentials:ro
+
     depends_on:
       postgres:
         condition: service_healthy
-      garage:
-        condition: service_healthy
-    networks:
-      - mytube_network
+
     restart: unless-stopped
+
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=5)"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
 volumes:
   postgres_data:
-  garage_meta:
-  garage_data:
-  garage_credentials:
   storage_data:
-
-networks:
-  mytube_network:
-    driver: bridge

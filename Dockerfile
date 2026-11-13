@@ -1,34 +1,40 @@
+
 FROM python:3.13-slim
 
-# Устанавливаем зависимости системы
-RUN apt-get update && apt-get install -y \
-    gcc \
-    libpq-dev \
-    postgresql-client \
-    && rm -rf /var/lib/apt/lists/*
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
-# Устанавливаем рабочую директорию
 WORKDIR /app
 
-# Копируем зависимости
+# System dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
+    libpq5 \
+    postgresql-client \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
+# Python dependencies
 COPY requirements.txt .
 
-# Устанавливаем Python зависимости
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Копируем код приложения
+# Application
 COPY . .
 
-# Копируем entrypoint-скрипт
 COPY scripts/docker_entrypoint.sh /docker_entrypoint.sh
+
 RUN chmod +x /docker_entrypoint.sh
 
-# Создаём пользователя
-RUN useradd -m appuser
+# Permissions and storage directory
+RUN useradd -m -s /bin/bash appuser \
+    && mkdir -p /app/storage \
+    && chown -R appuser:appuser /app \
+    && chmod +x /docker_entrypoint.sh
+
 USER appuser
 
-# Открываем порт
 EXPOSE 8000
 
-# Запуск через entrypoint-скрипт
 ENTRYPOINT ["/docker_entrypoint.sh"]
