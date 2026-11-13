@@ -4,18 +4,22 @@
 create_comments, create_likes, create_subscriptions.
 """
 
+from pathlib import Path
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.security import hash_password
 from app.models.channel import Channel
 from app.models.comment import Comment
 from app.models.like import Like
 from app.models.subscription import Subscription
 from app.models.users import User
 from app.models.video import Video
-from app.core.security import hash_password
+from app.storage.factory import get_storage
+
 from .test_data import (
-    TEST_COMMENTS,
     TEST_CHANNELS,
+    TEST_COMMENTS,
     TEST_LIKES,
     TEST_SUBSCRIPTIONS,
     TEST_USERS,
@@ -73,8 +77,18 @@ async def create_channels(
 async def create_videos(
     session: AsyncSession,
     channels_by_owner_username: dict[str, Channel],
+    video_file: Path,
 ) -> dict[str, Video]:
-    """Создать видео и вернуть словарь title -> Video."""
+    """Создать тестовые видео и загрузить файлы в хранилище."""
+
+    if not video_file.is_file():
+        raise FileNotFoundError(
+            f"Тестовый видеофайл не найден: {video_file}"
+        )
+
+    storage = get_storage()
+    file_size = video_file.stat().st_size
+
     videos_by_title: dict[str, Video] = {}
 
     for video_data in TEST_VIDEOS:
@@ -91,6 +105,25 @@ async def create_videos(
         )
 
         session.add(video)
+
+        # Получаем ID видео для формирования уникального имени объекта.
+        await session.flush()
+
+        object_name = f"videos/test/{video.id}.mp4"
+
+        print(f"Загрузка видео: {video.title}")
+
+        with video_file.open("rb") as file:
+            video_url = await storage.upload(
+                file=file,
+                object_name=object_name,
+                content_type="video/mp4",
+                size=file_size,
+            )
+
+        video.video_url = video_url
+        video.video_object_name = object_name
+
         videos_by_title[video.title] = video
 
     await session.flush()

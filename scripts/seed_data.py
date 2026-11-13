@@ -11,6 +11,7 @@ import asyncio
 import sys
 from pathlib import Path
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -21,6 +22,8 @@ from sqlalchemy.ext.asyncio import (
 # Добавляем корень проекта в путь импорта.
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
+
+TEST_VIDEO_FILE = PROJECT_ROOT / "Halloween.mp4"
 
 from app.core.config import get_settings
 from app.models.users import User
@@ -46,8 +49,14 @@ DATABASE_URL = get_settings().database_url
 
 
 async def seed_database() -> None:
-    """Заполнить пустую базу данных тестовыми данными."""
+    """Заполнить пустую базу тестовыми данными."""
+
     print("🚀 Запуск заполнения базы данных...")
+
+    if not TEST_VIDEO_FILE.is_file():
+        raise FileNotFoundError(
+            f"Тестовое видео не найдено: {TEST_VIDEO_FILE}"
+        )
 
     engine: AsyncEngine | None = None
 
@@ -65,6 +74,22 @@ async def seed_database() -> None:
 
         async with session_factory() as session:
             async with session.begin():
+
+                # Проверяем, не были ли тестовые данные созданы ранее.
+                existing_admin = await session.scalar(
+                    select(User.id).where(
+                        User.username == "admin"
+                    )
+                )
+
+                if existing_admin is not None:
+                    print(
+                        "ℹ️ Тестовые данные уже существуют. "
+                        "Повторное заполнение пропущено."
+                    )
+                    return
+
+                # Не допускаем заполнение непустой базы.
                 await ensure_database_is_empty(session)
 
                 users_by_username = await create_users(session)
@@ -77,6 +102,7 @@ async def seed_database() -> None:
                 videos_by_title = await create_videos(
                     session,
                     channels_by_owner_username,
+                    TEST_VIDEO_FILE,
                 )
 
                 await create_comments(
@@ -117,7 +143,6 @@ async def seed_database() -> None:
     finally:
         if engine is not None:
             await engine.dispose()
-
 
 if __name__ == "__main__":
     try:

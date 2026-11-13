@@ -1,4 +1,3 @@
-
 #!/usr/bin/env bash
 
 set -Eeuo pipefail
@@ -176,6 +175,7 @@ if echo "$SERVICES" | grep -qx "garage"; then
     fail "Garage is still enabled in docker-compose.yaml. Configure filesystem storage before deployment."
 fi
 
+
 # ------------------------------------------
 # 8. Build and start application
 # ------------------------------------------
@@ -186,10 +186,25 @@ $SUDO docker compose build
 
 log "Starting MyTube services..."
 
-$SUDO docker compose up -d
+$SUDO docker compose up -d --wait --wait-timeout 180
 
 # ------------------------------------------
-# 9. Show status
+# 9. Create test data
+# ------------------------------------------
+
+log "Creating test data..."
+
+[[ -f scripts/seed_data.py ]] \
+    || fail "scripts/seed_data.py not found in project."
+
+$SUDO docker compose exec -T api \
+    python scripts/seed_data.py \
+    || fail "Failed to create test data."
+
+log "Test data created successfully."
+
+# ------------------------------------------
+# 10. Show status
 # ------------------------------------------
 
 log "Deployment completed."
