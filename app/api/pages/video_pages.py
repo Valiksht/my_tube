@@ -3,7 +3,7 @@
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, status
-from fastapi.responses import RedirectResponse, HTMLResponse
+from fastapi.responses import RedirectResponse, HTMLResponse, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -225,6 +225,166 @@ async def video_page(
         "success": success,
     })
 
+
+# ==================== Стриминг видео ====================
+
+
+@router.get("/stream/{video_id}")
+async def stream_video(
+    video_id: int,
+    request: Request,
+    current_user: User = Depends(get_optional_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Потоковая передача видео с поддержкой HTTP Range."""
+
+    service = VideoService(db)
+
+    video = await service.get_video(
+        video_id=video_id,
+        current_user=current_user,
+    )
+
+    if not video:
+        raise HTTPException(
+            status_code=404,
+            detail="Video not found",
+        )
+
+    object_name = video.video_object_name
+
+    if not object_name:
+        raise HTTPException(
+            status_code=404,
+            detail="Video file not found",
+        )
+
+    storage = service.storage
+
+    if not await storage.exists(object_name):
+        raise HTTPException(
+            status_code=404,
+            detail="Video file does not exist in storage",
+        )
+
+    file_size = await storage._get_file_size(object_name)
+    content_type = await storage.get_content_type(object_name)
+
+    range_header = request.headers.get("range")
+
+    start = 0
+    end = file_size - 1
+    status_code = 200
+
+    if range_header:
+        import re
+
+        match = re.fullmatch(
+            r"bytes=(\d*)-(\d*)",
+            range_header.strip(),
+        )
+
+        if not match:
+            raise HTTPException(
+                status_code=416,
+                detail="Invalid Range header",
+                headers={
+                    "Content-Range": f"bytes */{file_size}"
+                },
+            )
+
+        first, last = match.groups()
+
+        if not first and not last:
+            raise HTTPException(
+                status_code=416,
+                detail="Invalid Range",
+            )
+
+        if not first:
+            suffix_length = int(last)
+
+            if suffix_length <= 0:
+                raise HTTPException(
+                    status_code=416,
+                    detail="Invalid Range",
+                )
+
+            start = max(0, file_size - suffix_length)
+
+        else:
+            start = int(first)
+            end = int(last) if last else file_size - 1
+
+        if start >= file_size or start > end:
+            raise HTTPException(
+                status_code=416,
+                detail="Requested range not satisfiable",
+                headers={
+                    "Content-Range": f"bytes */{file_size}"
+                },
+            )
+
+        end = min(end, file_size - 1)
+        status_code = 206
+
+    chunk_size = end - start + 1
+
+    def iter_content():
+        """Читать видео частями, не загружая целиком в память."""
+
+        if hasattr(storage, "client"):
+            response = storage.client.get_object(
+                bucket_name=storage.bucket,
+                object_name=object_name,
+                offset=start,
+                length=chunk_size,
+            )
+
+            try:
+                for chunk in response.stream(64 * 1024):
+                    yield chunk
+            finally:
+                response.close()
+                response.release_conn()
+
+        else:
+            file_path = storage.storage_dir / object_name
+
+            with open(file_path, "rb") as file:
+                file.seek(start)
+
+                remaining = chunk_size
+
+                while remaining > 0:
+                    chunk = file.read(
+                        min(64 * 1024, remaining)
+                    )
+
+                    if not chunk:
+                        break
+
+                    remaining -= len(chunk)
+                    yield chunk
+
+    headers = {
+        "Accept-Ranges": "bytes",
+        "Content-Length": str(chunk_size),
+        "Content-Type": content_type,
+        "Cache-Control": "no-cache",
+    }
+
+    if status_code == 206:
+        headers["Content-Range"] = (
+            f"bytes {start}-{end}/{file_size}"
+        )
+
+    return StreamingResponse(
+        iter_content(),
+        status_code=status_code,
+        headers=headers,
+        media_type=None,
+    )
 
 # ==================== Поиск ====================
 

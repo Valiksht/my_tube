@@ -87,3 +87,37 @@ class BaseStorage(ABC):
             MIME тип файла.
         """
         ...
+    
+    @abstractmethod
+    async def get_range(
+        self,
+        object_name: str,
+        start: int,
+        end: int,
+        content_type: str = "application/octet-stream",
+    ) -> BinaryIO:
+        """Получить диапазон байтов объекта.
+        
+        Используется для HTTP Range-запросов (потоковое воспроизведение).
+        
+        Args:
+            object_name: Имя объекта.
+            start: Начальный байт (включительно).
+            end: Конечный байт (включительно).
+            content_type: MIME тип файла.
+            
+        Returns:
+            Файловый объект с байтами диапазона.
+        """
+        ...
+    
+    async def _get_file_size(self, object_name: str) -> int:
+        """Получить размер объекта в байтах.
+        
+        Args:
+            object_name: Имя объекта.
+            
+        Returns:
+            Размер в байтах.
+        """
+        raise NotImplementedError

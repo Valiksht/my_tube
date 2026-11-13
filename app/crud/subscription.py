@@ -1,5 +1,7 @@
 """CRUD операции для подписок."""
 
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud.base import BaseRepository
@@ -29,13 +31,16 @@ class SubscriptionRepository(BaseRepository[Subscription]):
         skip: int = 0,
         limit: int = 100,
     ) -> list[Subscription]:
-        """Получить подписки пользователя."""
-        return await self.get_all(
-            db,
-            skip=skip,
-            limit=limit,
-            subscribed_user_id=user_id,
+        """Получить подписки пользователя с жадной загрузкой каналов."""
+        query = (
+            select(self.model)
+            .where(self.model.subscribed_user_id == user_id)
+            .options(selectinload(self.model.subscribed_channel))
+            .offset(skip)
+            .limit(limit)
         )
+        result = await db.execute(query)
+        return result.scalars().all()
     
     async def get_channel_subscribers(
         self,

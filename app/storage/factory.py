@@ -1,6 +1,7 @@
 """Фабрика для выбора хранилища.
 
-Возвращает MinIO или файловое хранилище в зависимости от STORAGE_TYPE.
+Возвращает S3-совместимое (MinIO/Garage) или файловое хранилище
+в зависимости от STORAGE_TYPE.
 Все сервисы используют эту функцию вместо прямого импорта.
 """
 
@@ -13,9 +14,9 @@ def get_storage() -> BaseStorage:
     """Получить экземпляр хранилища.
     
     Returns:
-        Экземпляр BaseStorage (MinIO или filesystem).
+        Экземпляр BaseStorage (S3/Garage или filesystem).
     """
-    storage_type = os.getenv("STORAGE_TYPE", "minio").lower()
+    storage_type = os.getenv("STORAGE_TYPE", "garage").lower()
     
     if storage_type == "filesystem":
         from app.storage.filesystem import file_storage

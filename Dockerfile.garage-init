@@ -1,0 +1,21 @@
+# Stage 1: Копируем garage binary из официального образа
+FROM dxflrs/garage:v2.2.0 AS garage-binary
+
+# Stage 2: Используем Alpine как базовый образ с shell и пакетным менеджером
+FROM alpine:latest
+
+# Устанавливаем netcat для проверки портов
+RUN apk add --no-cache netcat-openbsd
+
+# Копируем garage binary из stage 1
+COPY --from=garage-binary /garage /usr/local/bin/garage
+
+# Копируем конфигурацию Garage для инициализации
+COPY garage-init.toml /etc/garage.toml
+
+# Копируем скрипт инициализации
+COPY scripts/garage_init.sh /init.sh
+RUN chmod +x /init.sh
+
+# Команда по умолчанию
+ENTRYPOINT ["/init.sh"]

@@ -15,25 +15,30 @@ router = APIRouter(
 )
 
 
-@router.post(
-    "",
-    response_model=SubscriptionResponse,
-    status_code=status.HTTP_201_CREATED,
-)
+@router.post("")
 async def toggle_subscription(
     channel_id: int,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Переключить подписку на канал."""
+
     service = SubscriptionService(db)
-    
-    subscription = await service.toggle_subscription(
+
+    is_subscribed = await service.toggle_subscription(
         subscribed_user_id=current_user.id,
         subscribed_channel_id=channel_id,
     )
-    
-    return subscription
+
+    count = await service.get_channel_subscriber_count(
+        channel_id=channel_id,
+    )
+
+    return {
+        "channel_id": channel_id,
+        "is_subscribed": is_subscribed,
+        "subscriber_count": count,
+    }
 
 
 @router.get("/status")

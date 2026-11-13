@@ -1,0 +1,16 @@
+# Garage v2.2.0 - конфигурация для инициализации
+# Подключается к Garage через DNS-имя сервиса
+
+replication_factor = 1
+
+metadata_dir = "/var/lib/garage/meta"
+data_dir = "/var/lib/garage/data"
+
+rpc_secret = "2b9bf2ef12930d91f14650b03db7a1a3165f12a7cfa86c2f33278f7d641133d4"
+rpc_bind_addr = "[::]:3901"
+rpc_public_addr = "garage:3901"
+
+[s3_api]
+api_bind_addr = "[::]:3900"
+s3_region = "garage"
+root_domain = ".s3.garage"

@@ -49,3 +49,8 @@ class Comment(Base):
     user: Mapped["User"] = relationship(
         "User", back_populates="comments"
     )
+
+    @property
+    def username(self) -> str:
+        """Имя пользователя, написавшего комментарий."""
+        return self.user.username

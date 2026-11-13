@@ -6,7 +6,7 @@ services:
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
       - POSTGRES_DB=${POSTGRES_DB:-mytube_db}
-      - PGDATA=/var/lib/postgresql/data
+      - PGDATA=/var/lib/postgresql/data/pgdata
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
@@ -21,48 +21,32 @@ services:
       - mytube_network
     restart: unless-stopped
 
-  minio:
-    image: dockerhub.timeweb.cloud/bitnamilegacy/minio:latest
-    container_name: mytube_minio_local
-    environment:
-      - MINIO_ROOT_USER=minioadmin
-      - MINIO_ROOT_PASSWORD=minioadmin
-      - MINIO_DEFAULT_BUCKETS=videos
+  garage:
+    build:
+      context: .
+      dockerfile: Dockerfile.garage
+    container_name: mytube_garage_local
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "3900:3900"  # S3 API
+      - "3901:3901"  # RPC (inter-cluster)
+      - "3902:3902"  # Web UI (s3_web)
+      - "3903:3903"  # Admin API
+    environment:
+      - GARAGE_DEFAULT_BUCKET=videos
+      - GARAGE_DEFAULT_KEY_NAME=mytube-key
     volumes:
-      - minio_data:/data
-    healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:9000/minio/health/live"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-      start_period: 30s
+      - garage_meta:/var/lib/garage/meta
+      - garage_data:/var/lib/garage/data
+      - garage_credentials:/credentials
     networks:
       - mytube_network
     restart: unless-stopped
-
-  minio-init:
-    image: dockerhub.timeweb.cloud/bitnamilegacy/minio-client:latest
-    container_name: mytube_minio_init_local
-    environment:
-      - MINIO_SERVER_HOST=minio
-      - MINIO_SERVER_PORT_NUMBER=9000
-      - MINIO_SERVER_SCHEME=http
-      - MINIO_SERVER_ROOT_USER=minioadmin
-      - MINIO_SERVER_ROOT_PASSWORD=minioadmin
-    depends_on:
-      minio:
-        condition: service_healthy
-    command:
-      - /opt/bitnami/scripts/minio-client/run.sh
-      - mb
-      - --ignore-existing
-      - minio/videos
-    networks:
-      - mytube_network
-    restart: "no"
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 3900 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
 
   api:
     build:
@@ -82,31 +66,33 @@ services:
       - SESSION_COOKIE=session
       - SESSION_MAX_AGE=86400
       - SESSION_TOKEN_EXPIRE_DAYS=7
-      - STORAGE_TYPE=minio
+      - STORAGE_TYPE=garage
       - STORAGE_DIR=/app/storage
-      - MINIO_HOST=minio
-      - MINIO_PORT=9000
-      - MINIO_ROOT_USER=minioadmin
-      - MINIO_ROOT_PASSWORD=minioadmin
-      - MINIO_BUCKET=videos
-      - MINIO_PUBLIC_URL=http://localhost:9000
-      - MINIO_SECURE=false
+      - GARAGE_HOST=garage
+      - GARAGE_S3_PORT=3900
+      - GARAGE_S3_REGION=garage
+      - GARAGE_BUCKET=${GARAGE_BUCKET:-videos}
+      - GARAGE_S3_PUBLIC_URL=http://localhost:3900
+      - GARAGE_S3_SECURE=false
     ports:
       - "${API_PORT:-8000}:8000"
     volumes:
       - storage_data:/app/storage
+      - garage_credentials:/garage_credentials:ro
     depends_on:
       postgres:
         condition: service_healthy
-      minio-init:
-        condition: service_completed_successfully
+      garage:
+        condition: service_healthy
     networks:
       - mytube_network
     restart: unless-stopped
 
 volumes:
   postgres_data:
-  minio_data:
+  garage_meta:
+  garage_data:
+  garage_credentials:
   storage_data:
 
 networks:

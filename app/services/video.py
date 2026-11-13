@@ -173,29 +173,18 @@ class VideoService:
         current_user=None,
         expires: int = 3600,
     ) -> Optional[str]:
-        """Получить URL для потоковой передачи видео.
-        
-        Args:
-            video: Видео объект.
-            current_user: Текущий пользователь.
-            expires: Время жизни ссылки.
-            
-        Returns:
-            URL или None.
-        """
-        if not video.video_url:
+        """Получить ссылку на поток видео."""
+
+        if not video.video_object_name:
             return None
-        
+
         if not self._check_access(video, current_user):
             return None
-        
-        if not self.storage:
-            return video.video_url
-        
-        # Получаем имя объекта из URL
-        object_name = self._extract_object_name(video.video_url)
-        
-        return await self.storage.get_url(object_name, expires=expires)
+
+        return await self.storage.get_url(
+            video.video_object_name,
+            expires=expires,
+        )
     
     async def get_user_videos(
         self,
@@ -339,16 +328,16 @@ class VideoService:
     
     @staticmethod
     def _extract_object_name(url: str) -> str:
-        """Извлечь имя объекта из URL.
-        
-        Пример: http://localhost:9000/videos/videos/abc123.mp4
-        Возвращает: videos/abc123.mp4
-        """
-        parts = url.split("/")
-        # Ищем часть "videos" (бакет) и берём всё после неё
-        try:
-            bucket_idx = parts.index("videos")
-            return "/".join(parts[bucket_idx + 1:])
-        except ValueError:
-            return parts[-1]
+        """Извлечь имя объекта из URL."""
+
+        from urllib.parse import unquote, urlparse
+        path = unquote(urlparse(url).path).lstrip("/")
+        # URL Garage: /videos/videos/123.mp4
+        # URL файлового хранилища: /storage/videos/123.mp4
+        parts = path.split("/")
+        if len(parts) >= 3 and parts[0] == "videos":
+            return "/".join(parts[1:])
+        if len(parts) >= 3 and parts[0] == "storage":
+            return "/".join(parts[1:])
+        return path
 

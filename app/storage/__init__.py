@@ -1,6 +1,6 @@
 """Объектное хранилище видео и файлов.
 
-Абстракция для MinIO/S3 или файлового хранилища.
+Абстракция для S3-совместимого (MinIO/Garage) или файлового хранилища.
 Автоматически выбирает хранилище на основе переменных окружения.
 """
 
@@ -14,18 +14,18 @@ from app.storage.filesystem import FileStorage
 def get_storage() -> BaseStorage:
     """Получить экземпляр хранилища.
     
-    Выбирает MinIO если доступен, иначе файловое хранилище.
+    Выбирает S3-совместимое (Garage/MinIO) если доступен, иначе файловое хранилище.
     """
-    storage_type = os.getenv("STORAGE_TYPE", "minio").lower()
+    storage_type = os.getenv("STORAGE_TYPE", "garage").lower()
     
     if storage_type == "filesystem":
         return FileStorage()
     
-    # Пробуем MinIO
+    # Пробуем S3-совместимое хранилище (Garage/MinIO)
     try:
         return MinIOStorage()
     except Exception:
-        # Если MinIO недоступен, используем файловое хранилище
+        # Если S3-хранилище недоступен, используем файловое хранилище
         return FileStorage()
 
 

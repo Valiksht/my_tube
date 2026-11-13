@@ -282,3 +282,139 @@ async def test_profile_page_not_found(client):
     response = await client.get("/profile/99999")
 
     assert response.status_code == 404
+
+
+@pytest.mark.anyio
+async def test_my_subscriptions_unauthorized(client):
+    """Тест страницы моих подписок без авторизации."""
+    response = await client.get("/my-subscriptions")
+
+    assert response.status_code == 401
+
+
+@pytest.mark.anyio
+async def test_my_subscriptions_empty(client, test_user, test_channel):
+    """Тест страницы моих подписок когда нет подписок."""
+    # Авторизуемся
+    login_response = await client.post(
+        "/api/auth/login",
+        json={
+            "username": test_user.username,
+            "password": "testpass123",
+        },
+    )
+    assert login_response.status_code == 200
+
+    client.cookies.set(
+        "session",
+        login_response.json()["access_token"],
+        domain="test",
+    )
+
+    response = await client.get("/my-subscriptions")
+
+    assert response.status_code == 200
+    assert "не подписаны ни на один канал" in response.text
+
+
+@pytest.mark.anyio
+async def test_my_subscriptions_with_one_subscription(client, test_user, test_channel):
+    """Тест страницы моих подписок с одной подпиской."""
+    # Авторизуемся
+    login_response = await client.post(
+        "/api/auth/login",
+        json={
+            "username": test_user.username,
+            "password": "testpass123",
+        },
+    )
+    assert login_response.status_code == 200
+
+    client.cookies.set(
+        "session",
+        login_response.json()["access_token"],
+        domain="test",
+    )
+
+    # Подписываемся
+    sub_response = await client.post(
+        f"/api/channels/{test_channel.id}/subscriptions"
+    )
+    assert sub_response.status_code in (201, 200)
+
+    # Открываем страницу
+    response = await client.get("/my-subscriptions")
+
+    assert response.status_code == 200
+    assert "Test Channel" in response.text
+    assert "Отписаться" in response.text
+
+
+@pytest.mark.anyio
+async def test_my_subscriptions_with_multiple_subscriptions(
+    client, test_user, test_channel, db_session
+):
+    """Тест страницы моих подписок с несколькими подписками."""
+    from app.models.channel import Channel
+    from app.models.subscription import Subscription
+    from datetime import datetime, timezone
+
+    # Авторизуемся
+    login_response = await client.post(
+        "/api/auth/login",
+        json={
+            "username": test_user.username,
+            "password": "testpass123",
+        },
+    )
+    assert login_response.status_code == 200
+
+    client.cookies.set(
+        "session",
+        login_response.json()["access_token"],
+        domain="test",
+    )
+
+    # Создаём второй канал
+    from app.models.users import User
+    from app.core.security import hash_password
+
+    user2 = User(
+        username="testuser2",
+        email="testuser2@example.com",
+        hashed_password=hash_password("testpass123"),
+        is_active=True,
+        role="user",
+        created_at=datetime.now(timezone.utc),
+    )
+    db_session.add(user2)
+    await db_session.flush()
+
+    channel2 = Channel(
+        user_id=user2.id,
+        name="Second Channel",
+        description="Second description",
+        created_at=datetime.now(timezone.utc),
+    )
+    db_session.add(channel2)
+    await db_session.flush()
+
+    # Создаём подписки напрямую
+    sub1 = Subscription(
+        subscribed_user_id=test_user.id,
+        subscribed_channel_id=test_channel.id,
+    )
+    sub2 = Subscription(
+        subscribed_user_id=test_user.id,
+        subscribed_channel_id=channel2.id,
+    )
+    db_session.add_all([sub1, sub2])
+    await db_session.flush()
+
+    # Открываем страницу
+    response = await client.get("/my-subscriptions")
+
+    assert response.status_code == 200
+    assert "Test Channel" in response.text
+    assert "Second Channel" in response.text
+    assert "Отписаться" in response.text

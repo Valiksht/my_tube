@@ -12,25 +12,30 @@ from app.models.users import User
 router = APIRouter(prefix="/videos/{video_id}/likes", tags=["likes"])
 
 
-@router.post(
-    "",
-    response_model=LikeResponse,
-    status_code=status.HTTP_201_CREATED,
-)
+@router.post("")
 async def toggle_like(
     video_id: int,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Переключить лайк на видео."""
+    """Установить или удалить лайк."""
+
     service = LikeService(db)
-    
-    like = await service.toggle_like(
+
+    is_liked = await service.toggle_like(
         video_id=video_id,
         user_id=current_user.id,
     )
-    
-    return like
+
+    count = await service.get_video_like_count(
+        video_id=video_id,
+    )
+
+    return {
+        "video_id": video_id,
+        "is_liked": is_liked,
+        "like_count": count,
+    }
 
 
 @router.get("/status")

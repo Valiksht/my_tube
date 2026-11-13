@@ -19,36 +19,33 @@ class SubscriptionService:
         self,
         subscribed_user_id: int,
         subscribed_channel_id: int,
-    ) -> Subscription:
-        """Переключить подписку.
-        
-        Если подписка есть — удаляет. Если нет — создаёт.
-        
-        Args:
-            subscribed_user_id: ID пользователя.
-            subscribed_channel_id: ID канала.
-            
-        Returns:
-            Подписка (созданная или None).
+    ) -> bool:
+        """Переключить подписку на канал.
+
+        True — пользователь подписан.
+        False — пользователь отписан.
         """
+
         existing = await subscription_repo.get_subscription(
             self.db,
             subscribed_user_id=subscribed_user_id,
             subscribed_channel_id=subscribed_channel_id,
         )
-        
+
         if existing:
             await subscription_repo.remove_subscription(
                 self.db,
                 existing,
             )
-            return existing
-        
-        return await subscription_repo.create_subscription(
+            return False
+
+        await subscription_repo.create_subscription(
             self.db,
             subscribed_user_id=subscribed_user_id,
             subscribed_channel_id=subscribed_channel_id,
         )
+
+        return True
     
     async def is_subscribed(
         self,

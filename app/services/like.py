@@ -19,33 +19,25 @@ class LikeService:
         self,
         video_id: int,
         user_id: int,
-    ) -> Like:
-        """Переключить лайк.
-        
-        Если лайк есть — удаляет. Если нет — создаёт.
-        
-        Args:
-            video_id: ID видео.
-            user_id: ID пользователя.
-            
-        Returns:
-            Лайк (созданный или None).
+    ) -> bool:
+        """Переключить состояние лайка.
+
+        Возвращает True, если лайк установлен.
+        Возвращает False, если лайк удалён.
         """
+
         existing = await like_repo.get_like(
             self.db,
             video_id=video_id,
             user_id=user_id,
         )
-        
+
         if existing:
-            await like_repo.remove_like(self.db, existing)
-            return existing
-        
-        return await like_repo.create_like(
-            self.db,
-            video_id=video_id,
-            user_id=user_id,
-        )
+            await like_repo.remove_like(
+                self.db,
+                existing,
+            )
+     
     
     async def get_like_status(
         self,

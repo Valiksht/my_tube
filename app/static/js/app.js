@@ -66,7 +66,17 @@ function initFormHandlers() {
     
     // Like кнопки
     document.querySelectorAll('.like-btn').forEach(function(btn) {
+        // Защита от повторного подключения
+        if (btn.dataset.handlerAttached === 'true') return;
+        btn.dataset.handlerAttached = 'true';
+        
         btn.addEventListener('click', function() {
+            // Защита от повторных быстрых кликов
+            if (this.dataset.busy === 'true') return;
+            this.dataset.busy = 'true';
+            
+            // Запоминаем текущее состояние для восстановления при ошибке
+            var wasActive = this.classList.contains('active');
             var videoId = this.dataset.videoId;
             var countEl = this.querySelector('.like-count');
             
@@ -78,11 +88,13 @@ function initFormHandlers() {
                 }
             })
             .then(function(response) {
-                if (response.ok) {
-                    return fetch('/api/videos/' + videoId + '/likes/count');
+                if (!response.ok) {
+                    throw new Error('Like failed');
                 }
-                throw new Error('Like failed');
-            })
+                // Переключаем класс active только после успешного ответа
+                this.classList.toggle('active');
+                return fetch('/api/videos/' + videoId + '/likes/count');
+            }.bind(this))
             .then(function(response) {
                 return response.json();
             })
@@ -93,14 +105,34 @@ function initFormHandlers() {
             })
             .catch(function(error) {
                 console.error('Error:', error);
+                // Восстанавливаем предыдущее состояние при ошибке
+                if (wasActive) {
+                    this.classList.add('active');
+                } else {
+                    this.classList.remove('active');
+                }
                 showAlert('Не удалось обработать лайк', 'error');
-            });
+            })
+            .finally(function() {
+                this.dataset.busy = 'false';
+            }.bind(this));
         });
     });
     
     // Subscribe кнопки
     document.querySelectorAll('.subscribe-btn').forEach(function(btn) {
+        // Защита от повторного подключения
+        if (btn.dataset.handlerAttached === 'true') return;
+        btn.dataset.handlerAttached = 'true';
+        
         btn.addEventListener('click', function() {
+            // Защита от повторных быстрых кликов
+            if (this.dataset.busy === 'true') return;
+            this.dataset.busy = 'true';
+            
+            // Запоминаем текущее состояние для восстановления при ошибке
+            var wasSubscribed = this.classList.contains('active');
+            var wasText = this.textContent.trim();
             var channelId = this.dataset.channelId;
             
             fetch('/api/channels/' + channelId + '/subscriptions', {
@@ -111,25 +143,38 @@ function initFormHandlers() {
                 }
             })
             .then(function(response) {
-                if (response.ok) {
-                    var text = btn.textContent.trim();
-                    btn.textContent = text === 'Подписаться' ? 'Отписаться' : 'Подписаться';
-                    
-                    var countEl = document.querySelector('.channel-subscribers');
-                    if (countEl) {
-                        return fetch('/api/channels/' + channelId + '/subscriptions/count')
-                            .then(function(r) { return r.json(); })
-                            .then(function(data) {
-                                countEl.textContent = data.subscriber_count + ' подписчиков';
-                            });
-                    }
+                if (!response.ok) {
+                    throw new Error('Subscribe failed');
                 }
-                throw new Error('Subscribe failed');
-            })
+                // Переключаем класс active и текст только после успешного ответа
+                this.classList.toggle('active');
+                var isSubscribed = this.classList.contains('active');
+                this.textContent = isSubscribed ? 'Отписаться' : 'Подписаться';
+                
+                var countEl = document.querySelector('.channel-subscribers');
+                if (countEl) {
+                    return fetch('/api/channels/' + channelId + '/subscriptions/count')
+                        .then(function(r) { return r.json(); })
+                        .then(function(data) {
+                            countEl.textContent = data.subscriber_count + ' подписчиков';
+                        });
+                }
+            }.bind(this))
             .catch(function(error) {
                 console.error('Error:', error);
+                // Восстанавливаем предыдущее состояние при ошибке
+                if (wasSubscribed) {
+                    this.classList.add('active');
+                    this.textContent = 'Отписаться';
+                } else {
+                    this.classList.remove('active');
+                    this.textContent = 'Подписаться';
+                }
                 showAlert('Не удалось обновить подписку', 'error');
-            });
+            })
+            .finally(function() {
+                this.dataset.busy = 'false';
+            }.bind(this));
         });
     });
     
@@ -169,6 +214,125 @@ function initFormHandlers() {
             }
         });
     });
+    
+    // Comment form
+    var commentForm = document.getElementById('comment-form');
+    if (commentForm) {
+        // Защита от повторного подключения
+        if (commentForm.dataset.handlerAttached !== 'true') {
+            commentForm.dataset.handlerAttached = 'true';
+            
+            commentForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                var contentEl = document.getElementById('comment-content');
+                var errorEl = document.getElementById('comment-form-error');
+                var successEl = document.getElementById('comment-form-success');
+                var content = contentEl.value.trim();
+                
+                if (!content) {
+                    return;
+                }
+                
+                var videoId = this.dataset.videoId;
+                
+                fetch('/api/videos/' + videoId + '/comments', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': getCSRFToken()
+                    },
+                    body: JSON.stringify({ content: content })
+                })
+                .then(function(response) {
+                    if (!response.ok) {
+                        throw new Error('Comment failed');
+                    }
+                    return response.json();
+                })
+                .then(function(data) {
+                    // Очистить поле
+                    contentEl.value = '';
+                    
+                    // Показать сообщение об успехе
+                    if (successEl) {
+                        successEl.textContent = 'Комментарий добавлен';
+                        successEl.style.display = 'block';
+                        setTimeout(function() { successEl.style.display = 'none'; }, 3000);
+                    }
+                    
+                    // Перезагрузить комментарии
+                    return fetch('/api/videos/' + videoId + '/comments?skip=0&limit=50');
+                })
+                .then(function(response) { return response.json(); })
+                .then(function(comments) {
+                    // Перерисовать комментарии
+                    renderComments(comments);
+                })
+                .catch(function(error) {
+                    console.error('Error:', error);
+                    if (errorEl) {
+                        errorEl.textContent = 'Не удалось отправить комментарий';
+                        errorEl.style.display = 'block';
+                        setTimeout(function() { errorEl.style.display = 'none'; }, 5000);
+                    }
+                });
+            });
+        }
+    }
+}
+
+// Рендер комментариев
+function renderComments(comments) {
+    var section = document.querySelector('.comments-section');
+    if (!section) return;
+    
+    var list = section.querySelector('.comment-list');
+    if (!list) {
+        list = document.createElement('div');
+        list.className = 'comment-list';
+        
+        // Вставить после формы комментария или после h2
+        var form = section.querySelector('#comment-form');
+        var h2 = section.querySelector('h2');
+        if (form) {
+            section.insertBefore(list, form.nextSibling);
+        } else if (h2) {
+            section.insertBefore(list, h2.nextSibling);
+        } else {
+            section.appendChild(list);
+        }
+    }
+    
+    list.innerHTML = '';
+    
+    for (var i = 0; i < comments.length; i++) {
+        var comment = comments[i];
+        var div = document.createElement('div');
+        div.className = 'comment';
+        div.innerHTML = 
+            '<div class="comment-header">' +
+                '<span class="comment-author">' + escapeHtml(comment.user.username) + '</span>' +
+                '<span class="comment-date">' + escapeHtml(comment.created_at) + '</span>' +
+            '</div>' +
+            '<p class="comment-content">' + escapeHtml(comment.content) + '</p>';
+        list.appendChild(div);
+    }
+    
+    // Обновить счётчик
+    var heading = section.querySelector('h2');
+    if (heading) {
+        heading.textContent = 'Комментарии (' + comments.length + ')';
+    }
+}
+
+// Экранирование HTML
+function escapeHtml(text) {
+    if (!text) return '';
+    var div = document.createElement('div');
+    div.appendChild(document.createTextNode(text));
+    return div.innerHTML;
 }
 
 // Фокус на поле поиска

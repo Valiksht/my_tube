@@ -23,7 +23,7 @@ class FileStorage(BaseStorage):
         settings = get_settings()
         self.storage_dir = Path(storage_dir or settings.storage_dir)
         self.storage_dir.mkdir(parents=True, exist_ok=True)
-        self.base_url = os.getenv("STORAGE_BASE_URL", "http://localhost:8000/static/storage")
+        self.base_url = settings.storage_base_url
     
     async def upload(
         self,
@@ -74,8 +74,10 @@ class FileStorage(BaseStorage):
         return (self.storage_dir / object_name).exists()
     
     async def get_content_type(self, object_name: str) -> str:
-        """Получить MIME тип."""
-        return self._extension_from_content_type(object_name)
+        """Определить MIME-тип файла по его расширению."""
+        import mimetypes
+        content_type, _ = mimetypes.guess_type(object_name)
+        return content_type or "application/octet-stream"
     
     @staticmethod
     def _extension_from_content_type(content_type: str) -> str:
@@ -89,6 +91,36 @@ class FileStorage(BaseStorage):
             "image/gif": ".gif",
         }
         return mapping.get(content_type, ".bin")
+    
+    async def get_range(
+        self,
+        object_name: str,
+        start: int,
+        end: int,
+        content_type: str = "application/octet-stream",
+    ) -> BinaryIO:
+        """Получить диапазон байтов файла."""
+        file_path = self.storage_dir / object_name
+        
+        def iter_bytes():
+            with open(file_path, "rb") as f:
+                f.seek(start)
+                length = end - start + 1
+                bytes_read = 0
+                while bytes_read < length:
+                    chunk_size = min(64 * 1024, length - bytes_read)
+                    chunk = f.read(chunk_size)
+                    if not chunk:
+                        break
+                    bytes_read += len(chunk)
+                    yield chunk
+        
+        return iter_bytes()
+    
+    async def _get_file_size(self, object_name: str) -> int:
+        """Получить размер файла в байтах."""
+        file_path = self.storage_dir / object_name
+        return file_path.stat().st_size
 
 
 # Глобальный экземпляр

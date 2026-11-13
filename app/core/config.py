@@ -52,16 +52,9 @@ class Settings(BaseSettings):
     csrf_secret_key: str = "change-this-csrf-secret-key-in-production"
 
     # Storage
-    storage_type: str = "minio"  # minio или filesystem
-    storage_dir: str = "/app/storage"
-    minio_host: str = "localhost"
-    minio_port: int = 9000
-    minio_public_url: str = "http://localhost:9000"
-
-    @property
-    def minio_endpoint(self) -> str:
-        """Получить полный endpoint MinIO с портом."""
-        return f"{self.minio_host}:{self.minio_port}"
+    storage_type: str = "filesystem"
+    storage_dir: str = "./storage"
+    storage_base_url: str = "http://localhost:8000/storage"
 
     @property
     def cors_origins_list(self) -> list[str]:

@@ -4,8 +4,9 @@ set -e
 # ==================== Entry point для Docker-контейнера ====================
 # 1. Ожидание готовности PostgreSQL
 # 2. Применение миграций Alembic
-# 3. Загрузка тестовых данных
-# 4. Запуск uvicorn
+# 3. Инициализация объектного хранилища
+# 4. Загрузка тестовых данных
+# 5. Запуск uvicorn
 
 echo "============================================"
 echo "  🚀 Запуск приложения MyTube..."
@@ -43,7 +44,45 @@ else
     exit 1
 fi
 
-# --- 3. Загрузка тестовых данных ---
+# --- 3. Ожидание готовых credentials Garage ---
+echo ""
+echo "⏳ Ожидание готовых credentials Garage..."
+
+CRED_FILE="/garage_credentials/garage_credentials.env"
+MAX_RETRIES=30
+RETRY_COUNT=0
+
+while [ ! -f "$CRED_FILE" ]; do
+    RETRY_COUNT=$((RETRY_COUNT + 1))
+    
+    if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+        echo "❌ Ошибка: Не удалось получить credentials Garage после ${MAX_RETRIES} попыток"
+        exit 1
+    fi
+    
+    echo "   Попытка ${RETRY_COUNT}/${MAX_RETRIES}..."
+    sleep 2
+done
+
+echo "✅ Credentials Garage готовы!"
+
+# --- 4. Инициализация объектного хранилища ---
+echo ""
+echo "🗄️  Инициализация объектного хранилища..."
+
+STORAGE_TYPE="${STORAGE_TYPE:-garage}"
+
+if [ "$STORAGE_TYPE" = "garage" ]; then
+    if python scripts/init_storage.py; then
+        echo "✅ Хранилище инициализировано!"
+    else
+        echo "⚠️  Предупреждение: Не удалось инициализировать хранилище (будет использован fallback)"
+    fi
+else
+    echo "✅ Файловое хранилище используется (без инициализации)"
+fi
+
+# --- 5. Загрузка тестовых данных ---
 echo ""
 echo "🌱 Загрузка тестовых данных..."
 
@@ -53,7 +92,7 @@ else
     echo "⚠️  Предупреждение: Не удалось загрузить тестовые данные (возможно, база уже заполнена)"
 fi
 
-# --- 4. Запуск uvicorn ---
+# --- 6. Запуск uvicorn ---
 echo ""
 echo "============================================"
 echo "  ✅ Приложение готово к работе!"

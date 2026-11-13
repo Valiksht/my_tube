@@ -2,27 +2,26 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class CommentBase(BaseModel):
-    """Базовая схема комментария."""
-    
-    content: str = Field(..., min_length=1, max_length=2000)
+    content: str = Field(
+        ...,
+        min_length=1,
+        max_length=2000,
+    )
 
 
 class CommentCreate(CommentBase):
-    """Схема для создания комментария."""
-    
     pass
 
 
 class CommentResponse(CommentBase):
-    """Ответ с данными комментария."""
-    
     id: int
     video_id: int
     user_id: int
+    username: str
     created_at: datetime
-    
-    model_config = {"from_attributes": True}
+
+    model_config = ConfigDict(from_attributes=True)

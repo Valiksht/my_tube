@@ -1,5 +1,5 @@
 """Главный файл приложения YouTube Clone."""
-
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -38,10 +38,20 @@ app.add_middleware(
 )
 
 # Статические файлы
-try:
-    app.mount("/static", StaticFiles(directory="app/static"), name="static")
-except FileNotFoundError:
-    pass
+
+os.makedirs(settings.storage_dir, exist_ok=True)
+
+app.mount(
+    "/static",
+    StaticFiles(directory="app/static"),
+    name="static",
+)
+
+app.mount(
+    "/storage",
+    StaticFiles(directory=settings.storage_dir),
+    name="storage",
+)
 
 # HTML шаблоны
 templates = Jinja2Templates(directory="app/templates")

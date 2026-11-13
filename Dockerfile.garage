@@ -1,0 +1,10 @@
+FROM dxflrs/garage:v2.2.0
+
+COPY garage.toml /etc/garage.toml
+
+ENV RUST_LOG=garage=info
+
+EXPOSE 3900 3901 3902 3903
+
+ENTRYPOINT ["/garage"]
+CMD ["server"]
