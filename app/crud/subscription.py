@@ -1,8 +1,8 @@
 """CRUD операции для подписок."""
 
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.crud.base import BaseRepository
 from app.models.subscription import Subscription

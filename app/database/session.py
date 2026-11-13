@@ -3,12 +3,17 @@
 from contextlib import asynccontextmanager
 
 from sqlalchemy.ext.asyncio import (
-    AsyncSession,
     create_async_engine,
     async_sessionmaker,
 )
 
 from app.core.config import get_settings
+
+from sqlalchemy.ext.asyncio import (
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 
 # Глобальный кэш движка
 _engine_cache: dict[str, object] = {}

@@ -4,10 +4,11 @@
 """
 
 from datetime import datetime, timezone
-from typing import AsyncGenerator, Optional
+from typing import Optional
 
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core.exceptions import (
     AuthenticationRequiredException,
@@ -18,7 +19,6 @@ from app.models.users import User
 from app.models.session import UserSession
 from app.core.config import get_settings
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload
 
 
 async def get_current_user(

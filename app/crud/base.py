@@ -3,9 +3,9 @@
 Предоставляет общие методы для работы с любой таблицей БД.
 """
 
-from typing import Any, Generic, Sequence, Type, TypeVar
+from typing import Any, Generic, Type, TypeVar
 
-from sqlalchemy import select
+from sqlalchemy import Sequence, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.base import Base
 

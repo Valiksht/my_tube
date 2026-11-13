@@ -5,8 +5,8 @@
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.subscription import Subscription
 from app.crud.subscription import subscription_repo
+from app.models.subscription import Subscription
 
 
 class SubscriptionService:

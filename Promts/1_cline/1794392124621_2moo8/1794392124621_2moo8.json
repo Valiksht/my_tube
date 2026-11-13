@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "session_id": "1794392124621_2moo8",
+  "source": "vscode",
+  "pid": 38468,
+  "started_at": "2026-11-11T10:15:24.718Z",
+  "ended_at": "2026-11-11T10:53:21.946Z",
+  "exit_code": 1,
+  "status": "failed",
+  "interactive": true,
+  "provider": "ollama",
+  "model": "qwen3.5-9b-cline:latest",
+  "cwd": "d:\\IT\\New_dev\\my_tube_2",
+  "workspace_root": "d:\\IT\\New_dev\\my_tube_2",
+  "enable_tools": true,
+  "enable_spawn": false,
+  "enable_teams": false,
+  "prompt": "нужен план работы который будет включать в себя инициализацию и настройку alembic, и создание миграций и поднятие и пров",
+  "metadata": {
+    "sessionHistoryOrigin": {
+      "mode": "user",
+      "version": "4.1.26"
+    },
+    "git": {
+      "url": "https://github.com/Valiksht/my_tube.git",
+      "branch": "main"
+    },
+    "checkpoint": {
+      "latest": {
+        "ref": "7290f6e4835935624e818a637d7c2bbe62f874e8",
+        "createdAt": 1794394058596,
+        "runCount": 6,
+        "kind": "stash"
+      },
+      "history": [
+        {
+          "ref": "66f2886fa66e2db7375ac484b6d92cd028363d68",
+          "createdAt": 1794392125638,
+          "runCount": 1,
+          "kind": "commit"
+        },
+        {
+          "ref": "38d1f5bc77fd72b35344c99613f25e4c88f07665",
+          "createdAt": 1794393286617,
+          "runCount": 5,
+          "kind": "stash"
+        },
+        {
+          "ref": "7290f6e4835935624e818a637d7c2bbe62f874e8",
+          "createdAt": 1794394058596,
+          "runCount": 6,
+          "kind": "stash"
+        }
+      ]
+    },
+    "size": 9918,
+    "title": "нужен план работы который будет включать в себя инициализацию и настройку alembic, и создание миграций и поднятие и пров",
+    "isFavorited": false,
+    "totalCost": 0,
+    "tokensIn": 4027477,
+    "tokensOut": 38148,
+    "cacheWrites": 0,
+    "cacheReads": 0,
+    "modelId": "qwen3.5-9b-cline:latest",
+    "legacyTask": false,
+    "aggregatedAgentsCost": 0,
+    "usage": {
+      "inputTokens": 4027477,
+      "outputTokens": 38148,
+      "cacheReadTokens": 0,
+      "cacheWriteTokens": 0,
+      "totalCost": 0
+    },
+    "aggregateUsage": {
+      "inputTokens": 4027477,
+      "outputTokens": 38148,
+      "cacheReadTokens": 0,
+      "cacheWriteTokens": 0,
+      "totalCost": 0
+    },
+    "terminal_marker": "failed_external_process_exit",
+    "terminal_marker_at": "2026-11-11T10:53:21.946Z",
+    "terminal_marker_pid": 38468,
+    "terminal_marker_source": "stale_session_reconciler"
+  },
+  "messages_path": "C:\\Users\\valen\\.cline\\data\\sessions\\1794392124621_2moo8\\1794392124621_2moo8.messages.json"
+}

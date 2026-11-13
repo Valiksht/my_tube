@@ -7,8 +7,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.like import Like
 from app.crud.like import like_repo
-
-
 class LikeService:
     """Сервис для работы с лайками."""
     

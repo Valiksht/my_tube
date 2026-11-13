@@ -4,8 +4,6 @@
 загрузка файлов в объектное хранилище.
 """
 
-import os
-import tempfile
 from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession

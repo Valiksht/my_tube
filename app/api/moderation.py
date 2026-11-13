@@ -3,8 +3,6 @@
 Жалобы, скрытие видео/комментариев, панель модератора.
 """
 
-from typing import Optional
-
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession

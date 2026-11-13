@@ -3,8 +3,7 @@ __all__ = ["Video", "VideoPrivacy"]
 
 from datetime import datetime, timezone
 from sqlalchemy import Boolean, String, Integer, DateTime, ForeignKey, Text, text
-from sqlalchemy.orm import Mapped, mapped_column, relationship, DeclarativeBase
-from sqlalchemy.ext.asyncio import AsyncAttrs
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base
 from app.models.channel import Channel
 from app.models.like import Like

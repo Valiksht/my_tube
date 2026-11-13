@@ -3,8 +3,7 @@ __all__ = ["User"]
 
 from datetime import datetime, timezone
 from sqlalchemy import String, Integer, DateTime, Boolean, ForeignKey, text
-from sqlalchemy.orm import Mapped, mapped_column, relationship, DeclarativeBase
-from sqlalchemy.ext.asyncio import AsyncAttrs
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base
 from app.models.enum import UserRole
 

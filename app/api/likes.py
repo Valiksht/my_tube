@@ -5,7 +5,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.dependencies import get_db
 from app.dependencies import get_current_user
-from app.schemas.like import LikeResponse
 from app.services.like import LikeService
 from app.models.users import User
 

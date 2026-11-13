@@ -1,7 +1,5 @@
 """CRUD операции для каналов."""
 
-from typing import Any
-
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud.base import BaseRepository

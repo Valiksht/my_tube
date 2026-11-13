@@ -1,295 +1,183 @@
-# YouTube Clone
+# MyTube — YouTube Clone
 
-Учебный проект — клон YouTube с основными функциями видеохостинга.
+## Запусп проекта без docker
+chmod +x install.sh
+./install.sh
 
----
+## Если докер установлен
+docker compose up --build -d
 
-## 🚀 Production — Развёртывание на сервере
+## Промты
+Находятся в директории Promts
+### 1
+Сначала проект разрабатывался на локальной модели weine 3.5 9b с помощью cline
+### 2
+Далее из за постоянных зависаний и циклов модели, 
+а так же её невозможности настроить запуск проекта
+было решено перейти на gigacode в vs code.
 
-Один файл `docker-compose.production.yaml` запускает полный стек: PostgreSQL + MinIO + API + Nginx.
-
-### Требования
-
-- Ubuntu 22.04+ (или любой Linux с Docker)
-- Docker 24+ и Docker Compose v2
-- 2 ГБ RAM минимум
-
-### Шаг 1: Клонируйте проект
-
-```bash
-git clone <repository-url>
-cd my_tube_2
-```
-
-### Шаг 2: Настройте production окружение
-
-```bash
-cp .env.production .env
-```
-
-Откройте `.env` и измените значения на production-версии:
-
-```env
-# Безопасные пароли (сгенерируйте свои!)
-POSTGRES_PASSWORD=CHANGE_THIS_SECURE_PASSWORD_123
-SECRET_KEY=CHANGE_THIS_PRODUCTION_SECRET_KEY
-CSRF_SECRET_KEY=CHANGE_THIS_PRODUCTION_CSRF_KEY
-
-# Ваш домен
-CORS_ORIGINS=https://yourdomain.com
-
-# MinIO
-MINIO_ROOT_USER=CHANGE_THIS_MINIO_USER
-MINIO_ROOT_PASSWORD=CHANGE_THIS_MINIO_PASSWORD
-```
-
-> **Важно:** Сгенерируйте секретные ключи:
-> ```bash
-> python -c "import secrets; print(secrets.token_urlsafe(32))"
-> ```
-
-### Шаг 3: Запустите стек
-
-```bash
-docker compose -f docker-compose.production.yaml up -d --build
-```
-
-Это запустит:
-
-| Сервис | Порт | Описание |
-|--------|------|----------|
-| PostgreSQL | 5432 | База данных |
-| MinIO | 9000 / 9001 | Хранилище (API / Console) |
-| API | 8000 | FastAPI приложение |
-| Nginx | 80 | Reverse proxy |
-
-### Шаг 4: Примените миграции
-
-```bash
-docker compose -f docker-compose.production.yaml exec api \
-    alembic upgrade head
-```
-
-### Шаг 5: Заполните тестовыми данными
-
-```bash
-docker compose -f docker-compose.production.yaml exec api \
-    python scripts/seed_data.py
-```
-
-### Шаг 6: Откройте в браузере
-
-| Адрес | Описание |
-|-------|----------|
-| http://yourdomain.com | Главное приложение |
-| http://yourdomain.com/docs | API документация (Swagger) |
-| http://yourdomain.com:9001 | MinIO Console |
-
-### Управление
-
-```bash
-# Перезапуск
-docker compose -f docker-compose.production.yaml restart
-
-# Остановка
-docker compose -f docker-compose.production.yaml down
-
-# Логи
-docker compose -f docker-compose.production.yaml logs -f api
-
-# Масштабирование API (4 воркера)
-docker compose -f docker-compose.production.yaml up -d --scale api=4
-```
-
-### Минимальная конфигурация сервера
-
-```
-CPU: 2 ядра
-RAM: 2 ГБ
-Disk: 20 ГБ
-OS: Ubuntu 22.04 LTS
-```
-
----
-
-## 💻 Локальная разработка
-
-Запуск с PostgreSQL и MinIO в Docker, код — на хосте с hot-reload.
-
-### Требования
-
-- Docker и Docker Compose
-- Python 3.13+
-- FFmpeg (опционально, для обработки видео)
-
-### Шаг 1: Клонируйте и настройте
-
-```powershell
-git clone <repository-url>
-cd my_tube_2
-
-copy .env.example .env
-```
-
-### Шаг 2: Запустите инфраструктуру
-
-```powershell
-docker compose up -d
-```
-
-Запускает PostgreSQL и MinIO. Проверьте:
-
-```powershell
-docker compose ps
-```
-
-### Шаг 3: Настройте виртуальное окружение
-
-```powershell
-python -m venv venv
-venv\Scripts\python.exe -m pip install --upgrade pip
-venv\Scripts\python.exe -m pip install -r requirements.txt
-```
-
-### Шаг 4: Примените миграции
-
-```powershell
-venv/Scripts/python.exe -m alembic upgrade head
-```
-
-### Шаг 5: Заполните тестовыми данными
-
-```powershell
-venv/Scripts/python.exe scripts/seed_data.py
-```
-
-Доступные аккаунты:
-
-| Логин | Пароль | Роль |
-|-------|--------|------|
-| `admin` | `admin123` | admin |
-| `moderator` | `mod123456` | moderator |
-| `user1` | `user123456` | user |
-
-### Шаг 6: Запустите приложение
-
-```powershell
-venv/Scripts/python.exe -m uvicorn app.main:app --reload
-```
-
-### Шаг 7: Откройте в браузере
-
-| Адрес | Описание |
-|-------|----------|
-| http://localhost:8000 | Главное приложение |
-| http://localhost:8000/docs | API документация (Swagger) |
-| http://localhost:9001 | MinIO Console |
-
-### Тестирование
-
-```powershell
-# Все тесты
-venv/Scripts/python.exe -m pytest
-
-# Подробный вывод
-venv/Scripts/python.exe -m pytest -v
-
-# Конкретный файл
-venv/Scripts/python.exe -m pytest tests/test_auth.py -v
-
-# С покрытием
-venv/Scripts/python.exe -m pytest --cov=app --cov-report=html
-```
-
----
-
-## 📦 Стек технологий
+## Стек технологий
 
 ### Backend
-
-| Технология | Назначение |
-|------------|-----------|
-| **Python 3.13** | Язык программирования |
-| **FastAPI** | Web-фреймворк |
-| **SQLAlchemy 2.0** | ORM (async) |
-| **PostgreSQL 15** | База данных |
-| **Alembic** | Миграции БД |
-| **Pydantic v2** | Валидация данных |
-| **passlib + bcrypt** | Хеширование паролей |
-| **python-jose** | JWT токены |
-
-### Хранение и обработка
-
-| Технология | Назначение |
-|------------|-----------|
-| **MinIO** | S3-совместимое хранилище |
-| **FFmpeg** | Обработка видео, превью |
+- Python 3.13
+- FastAPI 0.115.x
+- SQLAlchemy 2.1.8 (async)
+- Alembic 1.20.1
+- Pydantic 2.14.3
 
 ### Инфраструктура
-
-| Технология | Назначение |
-|------------|-----------|
-| **Docker** | Контейнеризация |
-| **Docker Compose** | Оркестрация сервисов |
-| **Nginx** | Reverse proxy |
+- PostgreSQL 16
+- Garage 2.2.0 (S3-compatible storage)
+- Docker Compose
 
 ### Frontend
+- Jinja2 3.1.4 (HTML templates)
+- HTML5 / CSS
+- Vanilla JavaScript
 
-| Технология | Назначение |
-|------------|-----------|
-| **Jinja2** | Шаблоны |
-| **HTML5 / CSS** | Вёрстка |
-| **JavaScript** | Интерактивность |
+### Зависимости
 
-### Тестирование
+| Пакет | Версия | Назначение |
+|-------|--------|------------|
+| fastapi | >=0.115.0,<0.116.0 | API framework |
+| uvicorn | >=0.32.0 | ASGI server |
+| starlette | >=0.37.0,<0.38.0 | ASGI foundation |
+| SQLAlchemy | 2.1.8 | ORM |
+| alembic | 1.20.1 | DB migrations |
+| asyncpg | 0.30.0 | PostgreSQL driver |
+| pydantic | 2.14.3 | Data validation |
+| pydantic-settings | 2.16.2 | Settings via env vars |
+| email-validator | >=2.1.0 | Email validation |
+| annotated-types | 0.8.0 | Pydantic v2 type hints |
+| python-multipart | 0.0.9 | Multipart form parsing |
+| minio | >=7.1.0 | S3-compatible storage client |
+| python-jose | >=3.3.0 | JWT tokens |
+| passlib | 1.7.4 | Password hashing |
+| bcrypt | 4.0.1 | Bcrypt backend |
+| pillow | >=11.0.0 | Image processing |
+| ffmpeg-python | >=0.2.0 | FFmpeg wrapper |
+| jinja2 | 3.1.4 | HTML templates |
+| python-dotenv | 1.2.4 | .env loading |
+| pytest | 8.3.4 | Testing framework |
+| httpx | 0.27.0 | Async HTTP client for tests |
+| greenlet | 3.5.6 | SQLAlchemy async support |
 
-| Технология | Назначение |
-|------------|-----------|
-| **pytest** | Фреймворк тестов |
-| **httpx** | HTTP-клиент для тестов |
+## HTTP Эндпоинты
 
----
+### REST API
 
-## 📁 Структура проекта
+#### Аутентификация — `/api/auth`
 
-```
-my_tube_2/
-├── alembic/                    # Миграции базы данных
-├── app/
-│   ├── api/                    # API роутеры
-│   ├── core/                   # Конфигурация, безопасность
-│   ├── crud/                   # CRUD операции
-│   ├── database/               # Настройка БД
-│   ├── models/                 # SQLAlchemy модели
-│   ├── schemas/                # Pydantic схемы
-│   ├── services/               # Бизнес-логика
-│   ├── static/                 # CSS, JS
-│   ├── storage/                # Объектное хранилище
-│   ├── templates/              # Jinja2 шаблоны
-│   └── main.py                 # Главный файл
-├── scripts/                    # Вспомогательные скрипты
-├── tests/                      # Тесты
-├── docker-compose.production.yaml  # Production стек
-├── docker-compose.yaml         # Локальная инфраструктура
-├── Dockerfile.production       # Production образ
-├── requirements.txt            # Зависимости Python
-├── .env.production             # Production окружение
-└── README.md                   # Документация
-```
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/auth/register` | Регистрация пользователя |
+| POST | `/api/auth/login` | Вход (cookie + token) |
+| POST | `/api/auth/logout` | Выход |
+| GET | `/api/auth/me` | Текущий пользователь |
+| GET | `/api/auth/check` | Проверка авторизации |
 
----
+#### Видео — `/api/videos`
 
-## 🔐 Безопасность
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/videos` | Список публичных видео |
+| GET | `/api/videos/search` | Поиск видео |
+| GET | `/api/videos/{video_id}` | Видео по ID |
+| POST | `/api/videos` | Создать запись видео |
+| POST | `/api/videos/upload` | Загрузить видео с файлом |
+| PATCH | `/api/videos/{video_id}` | Обновить видео |
+| DELETE | `/api/videos/{video_id}` | Удалить видео |
+| GET | `/api/videos/{video_id}/comments` | Комментарии видео |
+| POST | `/api/videos/{video_id}/comments` | Создать комментарий |
+| DELETE | `/api/videos/{video_id}/comments/{comment_id}` | Удалить комментарий |
 
-- bcrypt хеширование паролей
-- Серверные сессии с HttpOnly Cookie
-- CSRF защита
-- Проверка прав на backend
-- Приватные видео с проверкой доступа
-- Секреты хранятся в `.env`, не в коде
+#### Каналы и пользователи
 
----
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/channels/me` | Мой канал |
+| POST | `/api/channels` | Создать канал |
+| PATCH | `/api/channels/me` | Обновить канал |
+| GET | `/api/channels/{channel_id}` | Канал по ID |
+| GET | `/api/channels/{channel_id}/videos` | Видео канала |
+| GET | `/api/users/me` | Данные пользователя |
+| PATCH | `/api/users/me` | Обновить пользователя |
+| GET | `/api/users/{user_id}` | Пользователь по ID |
 
-## 📝 Лицензия
+#### Лайки — `/api/videos/{video_id}/likes`
 
-Учебный проект.
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/videos/{video_id}/likes` | Переключить лайк |
+| GET | `/api/videos/{video_id}/likes/status` | Статус лайка |
+| GET | `/api/videos/{video_id}/likes/count` | Количество лайков |
+
+#### Подписки — `/api/channels/{channel_id}/subscriptions`
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/channels/{channel_id}/subscriptions` | Переключить подписку |
+| GET | `/api/channels/{channel_id}/subscriptions/status` | Статус подписки |
+| GET | `/api/channels/{channel_id}/subscriptions/count` | Количество подписчиков |
+| GET | `/api/channels/{channel_id}/subscriptions` | Список подписчиков |
+
+#### Модерация — `/api/moderation`
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/moderation/reports` | Создать жалобу |
+| GET | `/api/moderation/reports/pending` | Жалобы на модерации |
+| POST | `/api/moderation/reports/{report_id}/resolve` | Обработать жалобу |
+| GET | `/api/moderation/hidden` | Скрытый контент |
+| POST | `/api/moderation/hidden/{content_id}/unhide` | Восстановить контент |
+
+#### Системный
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/health` | Проверка работоспособности |
+
+### Frontend страницы
+
+#### Аутентификация
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/login` | Страница входа |
+| POST | `/login` | Обработка входа |
+| GET | `/register` | Страница регистрации |
+| POST | `/register` | Обработка регистрации |
+
+#### Видео
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/` | Главная страница |
+| GET | `/upload` | Страница загрузки |
+| POST | `/upload` | Обработка загрузки |
+| GET | `/video/{video_id}` | Просмотр видео |
+| GET | `/stream/{video_id}` | Потоковая передача (Range) |
+| GET | `/search` | Поиск видео |
+
+#### Каналы и профили
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/channel/create` | Создать канал |
+| POST | `/channel/create` | Обработка создания |
+| GET | `/channel/edit/{channel_id}` | Редактировать канал |
+| POST | `/channel/edit/{channel_id}` | Обработка редактирования |
+| GET | `/channel/{channel_id}` | Страница канала |
+| GET | `/profile/{user_id}` | Профиль пользователя |
+
+#### Подписки
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/my-subscriptions` | Мои подписки |
+
+#### Модерация
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/moderation` | Панель модерации |

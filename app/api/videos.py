@@ -12,7 +12,6 @@ from app.schemas.video import VideoCreate, VideoUpdate, VideoResponse
 from app.schemas.comment import CommentCreate, CommentResponse
 from app.services.video import VideoService
 from app.services.comment import CommentService
-from app.models.video import Video
 from app.models.users import User
 
 router = APIRouter(prefix="/videos", tags=["videos"])

@@ -1,0 +1,156 @@
+{
+  "version": 1,
+  "session_id": "1794345839375_69hux",
+  "source": "vscode",
+  "pid": 38468,
+  "started_at": "2026-11-10T21:23:59.462Z",
+  "ended_at": "2026-11-11T10:14:12.487Z",
+  "exit_code": 0,
+  "status": "completed",
+  "interactive": true,
+  "provider": "ollama",
+  "model": "qwen3.5-9b-cline:latest",
+  "cwd": "d:\\IT\\New_dev\\my_tube_2",
+  "workspace_root": "d:\\IT\\New_dev\\my_tube_2",
+  "enable_tools": true,
+  "enable_spawn": false,
+  "enable_teams": false,
+  "prompt": "# Реализация новой функции\r\n\r\n<task_objective>\r\nРеализовать новую функцию в YouTube Clone\r\nс учётом существующей архитек",
+  "metadata": {
+    "sessionHistoryOrigin": {
+      "mode": "user",
+      "version": "4.1.26"
+    },
+    "git": {
+      "url": "https://github.com/Valiksht/my_tube.git",
+      "branch": "main"
+    },
+    "checkpoint": {
+      "latest": {
+        "ref": "f3d4bf0a56b1ad531f07041c828e4fa57f1d6d4d",
+        "createdAt": 1794391032430,
+        "runCount": 22,
+        "kind": "stash"
+      },
+      "history": [
+        {
+          "ref": "006d1419372222eb2f4d79c58d9ecd8e2423c6de",
+          "createdAt": 1794345840496,
+          "runCount": 1,
+          "kind": "commit"
+        },
+        {
+          "ref": "0653745a31fd234dd5dbf8a4a32873609d39d56a",
+          "createdAt": 1794348856048,
+          "runCount": 5,
+          "kind": "commit"
+        },
+        {
+          "ref": "709c7c61fcf97da3b425709523f78a067a9444c3",
+          "createdAt": 1794349194518,
+          "runCount": 6,
+          "kind": "stash"
+        },
+        {
+          "ref": "71d6e90d7e2f4df965ed2046c0bed0c928d3e79c",
+          "createdAt": 1794349982752,
+          "runCount": 7,
+          "kind": "stash"
+        },
+        {
+          "ref": "70b1329710e1093e60a0de418afcd64deb410669",
+          "createdAt": 1794350285905,
+          "runCount": 8,
+          "kind": "commit"
+        },
+        {
+          "ref": "a1a961226335b151981aa7cb6dae28dcdc2a8a9b",
+          "createdAt": 1794383732184,
+          "runCount": 11,
+          "kind": "stash"
+        },
+        {
+          "ref": "829b99d7bb3eb01acf8f9b35808dae37cd3d080d",
+          "createdAt": 1794384014682,
+          "runCount": 12,
+          "kind": "stash"
+        },
+        {
+          "ref": "0f38dbd40e5f25fcce62c11f9d6bc83f3a212922",
+          "createdAt": 1794384565002,
+          "runCount": 14,
+          "kind": "stash"
+        },
+        {
+          "ref": "fd5896213a5428b0d235bf330a68fd666a92c8fb",
+          "createdAt": 1794384757354,
+          "runCount": 15,
+          "kind": "stash"
+        },
+        {
+          "ref": "ffc4e578ea339f012bc6dfe5b2efa7f91756322a",
+          "createdAt": 1794384942148,
+          "runCount": 16,
+          "kind": "stash"
+        },
+        {
+          "ref": "5433e59872d9946e41d66d4359526efa56929926",
+          "createdAt": 1794386400465,
+          "runCount": 17,
+          "kind": "stash"
+        },
+        {
+          "ref": "24d7c2a5a28d15a2a6c18a1e1e0e3b039a1724e1",
+          "createdAt": 1794387524041,
+          "runCount": 18,
+          "kind": "stash"
+        },
+        {
+          "ref": "8802c25c69eafd7081209020cb3d9e97001cbea2",
+          "createdAt": 1794387726972,
+          "runCount": 19,
+          "kind": "stash"
+        },
+        {
+          "ref": "830953ad2cb6f4a6fc1371c9108fa25292560cfd",
+          "createdAt": 1794388305476,
+          "runCount": 20,
+          "kind": "commit"
+        },
+        {
+          "ref": "f3d4bf0a56b1ad531f07041c828e4fa57f1d6d4d",
+          "createdAt": 1794391032430,
+          "runCount": 22,
+          "kind": "stash"
+        }
+      ]
+    },
+    "size": 21409,
+    "title": "# Реализация новой функции\r\n\r\n<task_objective>\r\nРеализовать новую функцию в YouTube Clone\r\nс учётом существующей архитек",
+    "isFavorited": false,
+    "totalCost": 0,
+    "tokensIn": 14412265,
+    "tokensOut": 153159,
+    "cacheWrites": 0,
+    "cacheReads": 0,
+    "modelId": "qwen3.5-9b-cline:latest",
+    "legacyTask": false,
+    "aggregatedAgentsCost": 0,
+    "usage": {
+      "inputTokens": 14412265,
+      "outputTokens": 153159,
+      "cacheReadTokens": 0,
+      "cacheWriteTokens": 0,
+      "totalCost": 0
+    },
+    "aggregateUsage": {
+      "inputTokens": 14412265,
+      "outputTokens": 153159,
+      "cacheReadTokens": 0,
+      "cacheWriteTokens": 0,
+      "totalCost": 0
+    }
+  },
+  "messages_path": "C:\\Users\\valen\\.cline\\data\\sessions\\1794345839375_69hux\\1794345839375_69hux.messages.json",
+  "compaction_path": "C:\\Users\\valen\\.cline\\data\\sessions\\1794345839375_69hux\\1794345839375_69hux.compaction.json"
+}

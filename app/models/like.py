@@ -3,8 +3,7 @@ __all__ = ["Like"]
 
 from datetime import datetime, timezone
 from sqlalchemy import Integer, ForeignKey, DateTime, text, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column, relationship, DeclarativeBase
-from sqlalchemy.ext.asyncio import AsyncAttrs
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base
 
 

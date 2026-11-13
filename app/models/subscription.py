@@ -3,8 +3,7 @@ __all__ = ["Subscription"]
 
 from datetime import datetime, timezone
 from sqlalchemy import Boolean, Integer, ForeignKey, DateTime, text, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column, relationship, DeclarativeBase
-from sqlalchemy.ext.asyncio import AsyncAttrs
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base
 
 

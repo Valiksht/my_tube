@@ -1,9 +1,10 @@
 """Зависимости для работы с базой данных."""
 
-from typing import AsyncGenerator
-
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database.session import get_async_session
+
+from collections.abc import AsyncGenerator
+
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:

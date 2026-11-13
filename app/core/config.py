@@ -3,9 +3,7 @@
 Загружает настройки из переменных окружения (.env) с валидацией через Pydantic v2.
 """
 
-from typing import Any, Literal
-
-from pydantic import PostgresDsn, field_validator
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
